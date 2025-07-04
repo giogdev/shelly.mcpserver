@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Shelly.McpServer": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
