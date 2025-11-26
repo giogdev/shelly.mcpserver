@@ -12,7 +12,9 @@ using Shelly.Services.Services;
 
 namespace Asg.MCP.Services
 {
-    /*4022d8dbf95c*/
+    /// <summary>
+    /// Integration service with Shelly cloud
+    /// </summary>
     public class ShellyCloudService : IShellyCloudService
     {
         private readonly string _host;
@@ -28,11 +30,17 @@ namespace Asg.MCP.Services
             _deviceStore = _store;
         }
 
+        /// <summary>
+        /// Get device by name given in shelly app
+        /// </summary>
         public DeviceNameMappingStoreItem? GetDeviceByFriendlyName(string name) 
         {
             return _deviceStore.Store.Where(x=> x.FriendlyNames.Contains(name)).FirstOrDefault();
         }
 
+        /// <summary>
+        /// Get the state of all requested devices
+        /// </summary>
         public async Task<IEnumerable<GenericDeviceStatusModel>> GetDeviceStateAsync(IEnumerable<DeviceNameMappingStoreItem> devicesRequest)
         {
             //Prepare request payload
@@ -91,12 +99,23 @@ namespace Asg.MCP.Services
             return [];
         }
 
+        /// <summary>
+        /// Get state of single device
+        /// </summary>
+        /// <param name="deviceRequest"></param>
+        /// <returns></returns>
         public async Task<GenericDeviceStatusModel?> GetSingleDeviceStateAsync(DeviceNameMappingStoreItem deviceRequest)
         {
             var devices = await GetDeviceStateAsync([deviceRequest]);
             return devices?.FirstOrDefault();
         }
 
+        /// <summary>
+        /// Change state of device (ex. light on - light off)
+        /// </summary>
+        /// <param name="switchRequest"></param>
+        /// <returns></returns>
+        /// <exception cref="HttpRequestException"></exception>
         public async Task<string> ControlSwitchDevice(CloudDeviceSwitchRequest switchRequest)
         {
             if (switchRequest.ToggleAfter <= 0) switchRequest.ToggleAfter = null;
@@ -115,9 +134,6 @@ namespace Asg.MCP.Services
             }
 
             return await response.Content.ReadAsStringAsync();
-
-            //var actionResult = await _deserializeApiResponseAsync<CloudDeviceResponseModel[]>(response);
-            //return actionResult ?? Array.Empty<CloudDeviceResponseModel>();
         }
 
         #region Private
