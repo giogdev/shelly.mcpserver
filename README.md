@@ -54,7 +54,27 @@ To run the server using Docker, you need to follow these steps:
 Once the .env file is configured, you can start the server with Docker Compose using the following command:
 1. Run this command: `docker-compose up -d`
 
+## Integration with Claude Desktop
+After starting the Docker container, you need to configure Claude Desktop to connect to your MCP server. Add the following configuration to your Claude Desktop config file:
 
+**Windows**: `C:\Users\[username]\AppData\Roaming\Claude\claude_desktop_config.json`
+
+Add this entry to the `mcpServers` section:
+```json
+{
+  "mcpServers": {
+    "shelly-mcp-server": {
+      "command": "docker",
+      "args": [
+        "attach",
+        "shelly-cloud-mcp-server"
+      ]
+    }
+  }
+}
+```
+
+**Note**: Make sure the Docker container is running before starting Claude Desktop, as Claude will try to connect to the MCP server on startup.
 
 ## Screenshot
 These are some screenshot from my agent Claude (by Anthropic).
