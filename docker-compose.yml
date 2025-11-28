@@ -1,0 +1,16 @@
+
+services:
+  shelly-cloud-mcp-server:
+    image: giogdev/shelly-cloud-mcp-server:v1.0.0
+    container_name: shelly-cloud-mcp-server
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
+      - SHELLY_API_KEY=${SHELLY_API_KEY}
+      - DeviceMappingFile=/app/devices.json
+    volumes:
+      - 'C:\Container\Shelly\devices.json:/app/devices.json:ro'
+    stdin_open: true 
+    tty: false

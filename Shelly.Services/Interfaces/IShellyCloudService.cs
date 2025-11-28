@@ -20,6 +20,7 @@ namespace Asg.MCP.Services
 
         Task<string> ControlSwitchDevice(CloudDeviceSwitchRequest switchRequest);
         DeviceNameMappingStoreItem? GetDeviceByFriendlyName(string name);
+        IEnumerable<DeviceNameMappingStoreItem> GeKnownDevices();
 
         #endregion
     }

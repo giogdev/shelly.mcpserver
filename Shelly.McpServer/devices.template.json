@@ -1,0 +1,13 @@
+[
+    {
+        "DeviceId": "your-device-id",
+        "ChannelId": 0,
+        "FriendlyNames": [
+            "kitchen",
+            "kitchen light",
+            "luce cucina",
+            "cucina"
+        ],
+        "DeviceType": "switch"
+    }
+]

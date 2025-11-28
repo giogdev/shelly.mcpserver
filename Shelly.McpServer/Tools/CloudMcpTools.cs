@@ -3,6 +3,7 @@ using Asg.MCP.Services;
 using ModelContextProtocol.Server;
 using Shelly.Models;
 using Shelly.Models.Cloud;
+using Shelly.Services.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -69,6 +70,12 @@ namespace Shelly.McpServer.Tools
             )
         {
             return await GetCloudDeviceStatusById(deviceName);
+        }
+
+        [McpServerTool, Description("Get list of your shelly devices")]
+        public IEnumerable<DeviceNameMappingStoreItem> GetDevices()
+        {
+            return _shellyCloudService.GeKnownDevices();
         }
 
         [McpServerTool, Description("Set ON or OFF on Shelly device (ex. light or switch device)")]

@@ -31,6 +31,14 @@ namespace Asg.MCP.Services
         }
 
         /// <summary>
+        /// Get list of devices
+        /// </summary>
+        public IEnumerable<DeviceNameMappingStoreItem> GeKnownDevices()
+        {
+            return _deviceStore.Store;
+        }
+
+        /// <summary>
         /// Get device by name given in shelly app
         /// </summary>
         public DeviceNameMappingStoreItem? GetDeviceByFriendlyName(string name) 

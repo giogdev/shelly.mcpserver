@@ -1,25 +1,28 @@
-﻿using Shelly.Models.Cloud;
+﻿using Microsoft.Extensions.Configuration;
+using Shelly.Models.Cloud;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Shelly.Services.Services
 {
     public class ShellyCloudDeviceStore
     {
-        public readonly IEnumerable<DeviceNameMappingStoreItem> Store = 
-            new List<DeviceNameMappingStoreItem>()
+        public IEnumerable<DeviceNameMappingStoreItem> Store { get; }
+
+        public ShellyCloudDeviceStore(IConfiguration configuration)
+        {
+            var mappingFile = configuration["DeviceMappingFile"];
+            if (string.IsNullOrEmpty(mappingFile) || !File.Exists(mappingFile))
             {
-                new DeviceNameMappingStoreItem()
-                {
-                    DeviceId = "your-device-id",
-                    ChannelId = 0,
-                    FriendlyNames = ["kitchen", "kitchen light", "luce cucina", "cucina"],
-                    DeviceType = "switch"
-                }
-            };
+                throw new Exception("DeviceMappingFile is empty");
+            }
+            var json = File.ReadAllText(mappingFile);
+            Store = JsonSerializer.Deserialize<List<DeviceNameMappingStoreItem>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+        }
     }
 }
 

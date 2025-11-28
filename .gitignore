@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 *.orig
 /Shelly.Services/Services/ShellyCloudDeviceStore-Giorgio.cs
+/Shelly.McpServer/appsettings.Release.json
+/Shelly.McpServer/devices.json
+/.env
