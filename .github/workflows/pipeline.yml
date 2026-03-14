@@ -2,10 +2,10 @@ name: Pipeline
 
 on:
   push:
-    branches: [ "master", "feature/pipeline" ]
+    branches: [ "master", "staging" ]
     tags: [ "v*.*.*" ]
   pull_request:
-    branches: [ "master", "feature/pipeline"]
+    branches: [ "master", "staging"]
 
 env:
   REGISTRY: docker.io
