@@ -78,5 +78,5 @@ Add this entry to the `mcpServers` section:
 
 ## Screenshot
 These are some screenshot from my agent Claude (by Anthropic).
-![claude-example1.png](docs/claude-example-1.png)
-![claude-example2.png](docs/claude-example-2.png)
+![claude-example1.png](docs/images/claude-example-1.png)
+![claude-example2.png](docs/images/claude-example-2.png)
