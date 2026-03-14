@@ -1,7 +1,7 @@
 
 services:
   shelly-cloud-mcp-server:
-    image: giogdev/shelly-cloud-mcp-server:v1.0.0
+    image: giogdev/shelly-cloud-mcp-server:latest
     container_name: shelly-cloud-mcp-server
     restart: unless-stopped
     ports:
