@@ -5,7 +5,7 @@ on:
     branches: [ "master", "feature/pipeline" ]
     tags: [ "v*.*.*" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "feature/pipeline"]
 
 env:
   REGISTRY: docker.io
