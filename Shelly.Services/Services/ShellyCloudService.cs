@@ -15,7 +15,7 @@ namespace Asg.MCP.Services
     /// <summary>
     /// Integration service with Shelly cloud
     /// </summary>
-    public class ShellyCloudService : IShellyCloudService
+    public partial class ShellyCloudService : IShellyCloudService
     {
         private readonly string _host;
         private readonly string _authKey;

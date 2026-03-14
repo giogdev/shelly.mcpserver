@@ -3,6 +3,8 @@ using Asg.MCP.Services;
 using ModelContextProtocol.Server;
 using Shelly.Models;
 using Shelly.Models.Cloud;
+using Shelly.Models.Cloud.Request;
+using Shelly.Models.Cloud.Response;
 using Shelly.Services.Services;
 using System;
 using System.Collections.Generic;
@@ -62,8 +64,6 @@ namespace Shelly.McpServer.Tools
             }
         }
 
-
-
         [McpServerTool, Description("Get info about Shelly Iot Devices from Shelly Cloud (Battery, Watt, temperature, Lux, status)")]
         public async Task<GenericDeviceStatusModel> GetCloudDeviceInfoById(
             [Description("Name of your shelly device")] string deviceName
@@ -109,5 +109,61 @@ namespace Shelly.McpServer.Tools
                 };
             }
         }
+    
+        [McpServerTool, Description("Get statistics of your shelly weather station")]
+        public async Task<WeatherStationStatisticsResponse?> GetWeatherStationStatistics(
+            [Description("Name of your shelly weather station device")] string deviceName,
+            [Description("Start date for statistics (UTC)")] DateTime dateFrom,
+            [Description("End date for statistics (UTC)")] DateTime dateTo)
+        {
+            try
+            {
+                var storeDevice = _shellyCloudService.GetDeviceByFriendlyName(deviceName);
+                if (storeDevice == null) return null;
+
+                var request = new WeatherStationStatisticsRequest
+                {
+                    DeviceId = storeDevice.DeviceId,
+                    DateFrom = dateFrom,
+                    DateTo = dateTo
+                };
+
+                return await _shellyCloudService.GetWeatherStationStatisticsAsync(request);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception as needed
+                return null;
+            }
+    
     }
+
+        [McpServerTool, Description("Get statistics of your shelly device power consumption")]
+        public async Task<PowerConsumptionStatisticsResponse?> GetPowerConsumptionStatistics(
+            [Description("Name of your shelly device")] string deviceName,
+            [Description("Start date for statistics (UTC)")] DateTime dateFrom,
+            [Description("End date for statistics (UTC)")] DateTime dateTo)
+        {
+            try
+            {
+                var storeDevice = _shellyCloudService.GetDeviceByFriendlyName(deviceName);
+                if (storeDevice == null) return null;
+
+                var request = new PowerConsumptionStatisticsRequest
+                {
+                    DeviceId = storeDevice.DeviceId,
+                    DateFrom = dateFrom,
+                    DateTo = dateTo
+                };
+
+                return await _shellyCloudService.GetPowerConsumptionStatisticsAsync(request);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception as needed
+                return null;
+            }
+        }
+    }
+
 }
