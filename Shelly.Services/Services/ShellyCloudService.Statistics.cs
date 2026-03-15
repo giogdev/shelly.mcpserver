@@ -1,6 +1,7 @@
 using Polly;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
+using Shelly.Services.Exceptions;
 using Shelly.Services.Utils;
 using System.Text.Json;
 
@@ -24,13 +25,27 @@ namespace Asg.MCP.Services
         /// </summary>
         /// <param name="request">Device identifier and the date range to query.</param>
         /// <returns>The statistics response, or null if the body cannot be deserialized.</returns>
-        /// <exception cref="HttpRequestException">Thrown when the API returns a non-success HTTP status.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the API returns isok: false.</exception>
+        /// <exception cref="HttpRequestException">Thrown when the API returns a non-success HTTP status with no parseable Shelly error key.</exception>
+        /// <exception cref="ShellyCloudApiException">Thrown when the API returns a known business-level error (e.g. device_not_found).</exception>
         public async Task<WeatherStationStatisticsResponse?> GetWeatherStationStatisticsAsync(WeatherStationStatisticsRequest request)
         {
+            var now = DateTime.UtcNow;
+            var adjustedDateTo = request.DateTo;
+
+            // If dateTo matches the current minute (ignoring seconds), subtract one minute
+            // to avoid querying an incomplete time bucket.
+            if (adjustedDateTo.Year == now.Year &&
+                adjustedDateTo.Month == now.Month &&
+                adjustedDateTo.Day == now.Day &&
+                adjustedDateTo.Hour == now.Hour &&
+                adjustedDateTo.Minute == now.Minute)
+            {
+                adjustedDateTo = adjustedDateTo.AddMinutes(-1);
+            }
+
             // ISO 8601 format keeps the dates unambiguous across timezones
             var dateFrom = request.DateFrom.ToString("yyyy-MM-ddTHH:mm:ssZ");
-            var dateTo = request.DateTo.ToString("yyyy-MM-ddTHH:mm:ssZ");
+            var dateTo = adjustedDateTo.ToString("yyyy-MM-ddTHH:mm:ssZ");
 
             var url = $"https://{_host}/v2/statistics/weather-station" +
                       $"?id={request.DeviceId}&channel=0&date_range=custom" +
@@ -43,14 +58,19 @@ namespace Asg.MCP.Services
             // Read body once; both error inspection and deserialization consume it from the same string.
             var body = await response.Content.ReadAsStringAsync();
 
+            // Non-success HTTP status: attempt to extract a Shelly error key before
+            // falling back to a generic HttpRequestException.
             if (!response.IsSuccessStatusCode)
+            {
+                TryThrowShellyApiException(body);
                 throw new HttpRequestException(
                     $"API call failed with status {response.StatusCode}: {body}",
                     null,
                     response.StatusCode);
+            }
 
             // Guard against application-level rejection (HTTP 200 but isok: false).
-            ThrowIfApiError(body);
+            TryThrowShellyApiException(body);
 
             return JsonSerializer.Deserialize<WeatherStationStatisticsResponse>(body, _statisticsJsonOptions);
         }
@@ -61,8 +81,8 @@ namespace Asg.MCP.Services
         /// </summary>
         /// <param name="request">Device identifier and the date range to query.</param>
         /// <returns>The statistics response, or null if the body cannot be deserialized.</returns>
-        /// <exception cref="HttpRequestException">Thrown when the API returns a non-success HTTP status.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when the API returns isok: false.</exception>
+        /// <exception cref="HttpRequestException">Thrown when the API returns a non-success HTTP status with no parseable Shelly error key.</exception>
+        /// <exception cref="ShellyCloudApiException">Thrown when the API returns a known business-level error (e.g. device_not_found).</exception>
         public async Task<PowerConsumptionStatisticsResponse?> GetPowerConsumptionStatisticsAsync(PowerConsumptionStatisticsRequest request)
         {
             // ISO 8601 format keeps the dates unambiguous across timezones
@@ -80,35 +100,40 @@ namespace Asg.MCP.Services
             var body = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
+            {
+                TryThrowShellyApiException(body);
                 throw new HttpRequestException(
                     $"API call failed with status {response.StatusCode}: {body}",
                     null,
                     response.StatusCode);
+            }
 
-            ThrowIfApiError(body);
+            TryThrowShellyApiException(body);
 
             return JsonSerializer.Deserialize<PowerConsumptionStatisticsResponse>(body, _statisticsJsonOptions);
         }
 
         /// <summary>
         /// Inspects the raw JSON body for the Shelly application-level error envelope.
-        /// Throws when the API signals isok: false even under a 2xx HTTP status.
+        /// Throws <see cref="ShellyCloudApiException"/> when isok is false, surfacing the
+        /// first error key so the presentation layer can map it to the right HTTP status.
+        /// No-ops on bodies that do not contain the error envelope.
         /// </summary>
-        private static void ThrowIfApiError(string body)
+        private static void TryThrowShellyApiException(string body)
         {
-            // A quick check avoids deserializing the full body on the happy path.
+            // Quick check avoids deserializing on the happy path.
             if (!body.Contains("\"isok\"", StringComparison.OrdinalIgnoreCase))
                 return;
 
-            var errorEnvelope = JsonSerializer.Deserialize<ShellyApiErrorResponse>(body, _statisticsJsonOptions);
-            if (errorEnvelope is { IsOk: false })
-            {
-                var errors = errorEnvelope.Errors is not null
-                    ? JsonSerializer.Serialize(errorEnvelope.Errors)
-                    : "(no error details)";
+            var envelope = JsonSerializer.Deserialize<ShellyApiErrorResponse>(body, _statisticsJsonOptions);
+            if (envelope is not { IsOk: false })
+                return;
 
-                throw new InvalidOperationException($"Shelly API returned isok: false. Errors: {errors}");
-            }
+            // Use the first error entry as the canonical key + message.
+            var (key, message) = envelope.Errors?.FirstOrDefault()
+                ?? new KeyValuePair<string, string>("unknown_error", "Shelly API rejected the request.");
+
+            throw new ShellyCloudApiException(key, message);
         }
     }
 }

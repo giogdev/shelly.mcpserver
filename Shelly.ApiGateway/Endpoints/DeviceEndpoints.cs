@@ -16,23 +16,32 @@ public static class DeviceEndpoints
             .WithTags("Devices");
 
         // Returns the full list of known devices from the local store (no cloud call).
-        group.MapGet("/", (IShellyCloudService shellyService) =>
+        group.MapGet("/", Results<Ok<IEnumerable<DeviceNameMappingStoreItem>>, ProblemHttpResult> (IShellyCloudService shellyService) =>
         {
-            IEnumerable<DeviceNameMappingStoreItem> devices = shellyService.GeKnownDevices();
-            return TypedResults.Ok(devices);
+            try
+            {
+                IEnumerable<DeviceNameMappingStoreItem> devices = shellyService.GeKnownDevices();
+                return TypedResults.Ok(devices);
+            }
+            catch (Exception ex)
+            {
+                return TypedResults.Problem(
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
         })
         .WithName("GetDevices")
         .WithSummary("Get all known Shelly devices");
 
         // Looks up the device by ID, then fetches its live status from Shelly Cloud.
-        group.MapGet("/{deviceId}/status", async Task<Results<Ok<GenericDeviceStatusModel>, NotFound<string>, ProblemHttpResult>> (
+        group.MapGet("/{deviceId}/status", async Task<Results<Ok<GenericDeviceStatusModel>, NotFound<ApiErrorResponse>, ProblemHttpResult>> (
             string deviceId,
             IShellyCloudService shellyService) =>
         {
             DeviceNameMappingStoreItem? device = shellyService.GeKnownDevices()
                 .FirstOrDefault(d => d.DeviceId == deviceId);
             if (device is null)
-                return TypedResults.NotFound($"No device found with id '{deviceId}'.");
+                return TypedResults.NotFound(new ApiErrorResponse($"No device found with id '{deviceId}'."));
 
             try
             {

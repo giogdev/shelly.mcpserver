@@ -18,7 +18,7 @@ public static class SwitchEndpoints
 
         // Sends an ON/OFF command to the device identified by device ID.
         // Optional delaySeconds causes the device to revert after that many seconds.
-        group.MapPost("/{deviceId}/switch", async Task<Results<Ok<DefaultResponse>, NotFound<string>, ProblemHttpResult>> (
+        group.MapPost("/{deviceId}/switch", async Task<Results<Ok<DefaultResponse>, NotFound<ApiErrorResponse>, ProblemHttpResult>> (
             string deviceId,
             SwitchRequest body,
             IShellyCloudService shellyService) =>
@@ -26,7 +26,7 @@ public static class SwitchEndpoints
             DeviceNameMappingStoreItem? device = shellyService.GeKnownDevices()
                 .FirstOrDefault(d => d.DeviceId == deviceId);
             if (device is null)
-                return TypedResults.NotFound($"No device found with id '{deviceId}'.");
+                return TypedResults.NotFound(new ApiErrorResponse($"No device found with id '{deviceId}'."));
 
             try
             {

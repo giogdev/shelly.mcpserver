@@ -1,7 +1,9 @@
 using Asg.MCP.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Shelly.Models;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
+using Shelly.Services.Exceptions;
 
 namespace Shelly.ApiGateway.Endpoints;
 
@@ -18,7 +20,7 @@ public static class StatisticsEndpoints
         // Fetches temperature/humidity history for a weather station device.
         // dateFrom and dateTo are passed as UTC query parameters.
         group.MapGet("/{deviceId}/weather-statistics",
-            async Task<Results<Ok<WeatherStationStatisticsResponse>, ProblemHttpResult>> (
+            async Task<Results<Ok<WeatherStationStatisticsResponse>, NotFound<ApiErrorResponse>, BadRequest<ApiErrorResponse>, ProblemHttpResult>> (
                 string deviceId,
                 DateTime dateFrom,
                 DateTime dateTo,
@@ -43,6 +45,17 @@ public static class StatisticsEndpoints
 
                 return TypedResults.Ok(result);
             }
+            catch (ShellyCloudApiException ex) when (ex.ErrorKey == "device_not_found")
+            {
+                // The device ID is not recognised by the cloud as a weather station
+                // (or has never been connected). Surface as 404 with a human-readable message.
+                return TypedResults.NotFound(new ApiErrorResponse(ex.Message));
+            }
+            catch (ShellyCloudApiException ex)
+            {
+                // Other application-level rejections from Shelly (bad request semantics).
+                return TypedResults.BadRequest(new ApiErrorResponse(ex.Message));
+            }
             catch (Exception ex)
             {
                 return TypedResults.Problem(
@@ -55,7 +68,7 @@ public static class StatisticsEndpoints
 
         // Fetches energy consumption history for a power-metering device.
         group.MapGet("/{deviceId}/power-statistics",
-            async Task<Results<Ok<PowerConsumptionStatisticsResponse>, ProblemHttpResult>> (
+            async Task<Results<Ok<PowerConsumptionStatisticsResponse>, NotFound<ApiErrorResponse>, BadRequest<ApiErrorResponse>, ProblemHttpResult>> (
                 string deviceId,
                 DateTime dateFrom,
                 DateTime dateTo,
@@ -78,6 +91,14 @@ public static class StatisticsEndpoints
                         statusCode: StatusCodes.Status502BadGateway);
 
                 return TypedResults.Ok(result);
+            }
+            catch (ShellyCloudApiException ex) when (ex.ErrorKey == "device_not_found")
+            {
+                return TypedResults.NotFound(new ApiErrorResponse(ex.Message));
+            }
+            catch (ShellyCloudApiException ex)
+            {
+                return TypedResults.BadRequest(new ApiErrorResponse(ex.Message));
             }
             catch (Exception ex)
             {

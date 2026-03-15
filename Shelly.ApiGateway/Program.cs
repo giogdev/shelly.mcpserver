@@ -1,5 +1,7 @@
 using Asg.MCP.Services;
+using Scalar.AspNetCore;
 using Shelly.ApiGateway.Endpoints;
+using Shelly.Models;
 using Shelly.Services.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,7 +28,25 @@ if (app.Environment.IsDevelopment())
 {
     // Expose the OpenAPI document only in development; use a dedicated tool in prod.
     app.MapOpenApi();
+    // Scalar serves the interactive API reference UI at /scalar by default.
+    app.MapScalarApiReference();
 }
+
+// Global exception handler — catches anything that escapes endpoint-level try/catch.
+// Returns { "message": "..." } with status 500. Never exposes a stack trace.
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exceptionFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var message = exceptionFeature?.Error?.Message ?? "An unexpected error occurred.";
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        await context.Response.WriteAsJsonAsync(new ApiErrorResponse(message));
+    });
+});
 
 app.UseHttpsRedirection();
 
