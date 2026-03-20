@@ -1,0 +1,25 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+
+# Layer cache ottimizzato: copia tutti i .csproj prima del restore
+COPY ["Shelly.ApiGateway/Shelly.ApiGateway.csproj", "Shelly.ApiGateway/"]
+COPY ["Shelly.Models/Shelly.Models.csproj", "Shelly.Models/"]
+COPY ["Shelly.Services/Shelly.Services.csproj", "Shelly.Services/"]
+RUN dotnet restore "Shelly.ApiGateway/Shelly.ApiGateway.csproj"
+
+# Copia il sorgente e pubblica
+COPY . .
+RUN dotnet publish "Shelly.ApiGateway/Shelly.ApiGateway.csproj" \
+    -c $BUILD_CONFIGURATION \
+    -o /app/publish \
+    --no-restore \
+    /p:UseAppHost=false
+
+# Final stage — aspnet Alpine per immagine ASP.NET Core più piccola
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
+WORKDIR /app
+USER $APP_UID
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "Shelly.ApiGateway.dll"]

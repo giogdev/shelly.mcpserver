@@ -12,5 +12,18 @@ services:
       - DeviceMappingFile=/app/devices.json
     volumes:
       - 'C:\Container\Shelly\devices.json:/app/devices.json:ro'
-    stdin_open: true 
+    stdin_open: true
     tty: false
+
+  shelly-api-gateway:
+    image: giogdev/shelly-api-gateway:latest
+    container_name: shelly-api-gateway
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
+      - SHELLY_API_KEY=${SHELLY_API_KEY}
+      - DeviceMappingFile=/app/devices.json
+    volumes:
+      - 'C:\Container\Shelly\devices.json:/app/devices.json:ro'
