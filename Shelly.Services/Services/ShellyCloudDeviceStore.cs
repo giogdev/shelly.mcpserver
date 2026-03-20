@@ -15,6 +15,14 @@ namespace Shelly.Services.Services
 
         public ShellyCloudDeviceStore(IConfiguration configuration)
         {
+            // When DeviceMappingFileRequired is false (or not set), skip file loading entirely.
+            var mappingRequired = configuration.GetValue<bool>("DeviceMappingFileRequired");
+            if (!mappingRequired)
+            {
+                Store = [];
+                return;
+            }
+
             var mappingFile = configuration["DeviceMappingFile"];
             if (string.IsNullOrEmpty(mappingFile) || !File.Exists(mappingFile))
             {

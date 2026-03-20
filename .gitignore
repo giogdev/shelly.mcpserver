@@ -367,3 +367,5 @@ FodyWeavers.xsd
 /Shelly.McpServer/devices.json
 /.env
 Shelly.McpServer/appsetting.Development.json
+Shelly.ApiGateway/appsettings.Development.json
+Shelly.ApiGateway/appsettings.Development.json
