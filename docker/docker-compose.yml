@@ -24,6 +24,4 @@ services:
     environment:
       - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
       - SHELLY_API_KEY=${SHELLY_API_KEY}
-      - DeviceMappingFile=/app/devices.json
-    volumes:
-      - 'C:\Container\Shelly\devices.json:/app/devices.json:ro'
+      - DeviceMappingFileRequired=false
