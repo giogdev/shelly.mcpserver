@@ -26,11 +26,13 @@ var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    // Expose the OpenAPI document only in development; use a dedicated tool in prod.
-    app.MapOpenApi();
-    // Scalar serves the interactive API reference UI at /scalar by default.
-    app.MapScalarApiReference();
+
 }
+
+// Expose the OpenAPI document only in development; use a dedicated tool in prod.
+app.MapOpenApi();
+// Scalar serves the interactive API reference UI at /scalar by default.
+app.MapScalarApiReference();
 
 // Global exception handler — catches anything that escapes endpoint-level try/catch.
 // Returns { "message": "..." } with status 500. Never exposes a stack trace.
@@ -48,7 +50,8 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-app.UseHttpsRedirection();
+
+//app.UseHttpsRedirection();
 
 // ──────────────────────────────────────────────
 // Endpoint registration — each group in its own file under Endpoints/
