@@ -1,4 +1,4 @@
-﻿using Asg.MCP.Models.Shelly;
+﻿using Giogdev.Shelly.Integrations.Models.Shelly;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 using Shelly.Models.Cloud.Request;
@@ -10,7 +10,7 @@ using Shelly.Models;
 using Shelly.Services.Mapper;
 using Shelly.Services.Services;
 
-namespace Asg.MCP.Services
+namespace Giogdev.Shelly.Integrations.Services
 {
     /// <summary>
     /// Integration service with Shelly cloud

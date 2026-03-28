@@ -1,4 +1,4 @@
-using Asg.MCP.Services;
+using Giogdev.Shelly.Integrations.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shelly.Models;
 using Shelly.Models.Cloud.Request;

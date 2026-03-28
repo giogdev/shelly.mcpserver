@@ -369,3 +369,7 @@ FodyWeavers.xsd
 Shelly.McpServer/appsetting.Development.json
 Shelly.ApiGateway/appsettings.Development.json
 Shelly.ApiGateway/appsettings.Development.json
+
+# Claude Code - personal memories
+.claude/projects/
+docs/response-examples/v2-devices-get.json

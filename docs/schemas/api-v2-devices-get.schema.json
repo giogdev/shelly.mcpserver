@@ -1,0 +1,894 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/shelly/v2-devices-get.schema.json",
+  "title": "Shelly schema for api response in GET /v2/devices/get",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/Device"
+  },
+  "$defs": {
+    "BooleanInt": {
+      "type": "integer",
+      "enum": [ 0, 1 ]
+    },
+    "NullOrString": {
+      "type": [ "string", "null" ]
+    },
+    "G1WifiStaStatus": {
+      "type": "object",
+      "required": [ "connected", "ssid", "ip", "rssi" ],
+      "properties": {
+        "connected": { "type": "boolean" },
+        "ssid": { "type": "string" },
+        "ip": { "type": "string" },
+        "rssi": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G1CloudStatus": {
+      "type": "object",
+      "required": [ "enabled", "connected" ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "connected": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "G1UpdateStatus": {
+      "type": "object",
+      "required": [ "status", "has_update", "new_version", "old_version" ],
+      "properties": {
+        "status": { "type": "string" },
+        "has_update": { "type": "boolean" },
+        "new_version": { "type": "string" },
+        "old_version": { "type": "string" },
+        "beta_version": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "G1InputItem": {
+      "type": "object",
+      "required": [ "input", "event", "event_cnt" ],
+      "properties": {
+        "input": { "type": "number" },
+        "event": { "type": "string" },
+        "event_cnt": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G1RelayMeterItem": {
+      "type": "object",
+      "properties": {
+        "power": { "type": "number" },
+        "is_valid": { "type": "boolean" },
+        "overpower": { "type": [ "number", "boolean" ] },
+        "timestamp": { "type": "number" },
+        "counters": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "total": { "type": "number" }
+      },
+      "required": [ "power", "is_valid" ],
+      "additionalProperties": true
+    },
+    "G1RelayRuntimeItem": {
+      "type": "object",
+      "required": [ "ison", "has_timer", "timer_started", "timer_duration", "timer_remaining", "source" ],
+      "properties": {
+        "ison": { "type": "boolean" },
+        "has_timer": { "type": "boolean" },
+        "timer_started": { "type": "number" },
+        "timer_duration": { "type": "number" },
+        "timer_remaining": { "type": "number" },
+        "source": { "type": "string" },
+        "overpower": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "G1ActionsStats": {
+      "type": "object",
+      "required": [ "skipped" ],
+      "properties": {
+        "skipped": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G1WifiStaSettings": {
+      "type": "object",
+      "required": [ "enabled", "ssid", "ipv4_method", "ip", "gw", "mask", "dns" ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "ssid": { "type": [ "string", "null" ] },
+        "ipv4_method": { "type": "string" },
+        "ip": { "type": [ "string", "null" ] },
+        "gw": { "type": [ "string", "null" ] },
+        "mask": { "type": [ "string", "null" ] },
+        "dns": { "type": [ "string", "null" ] }
+      },
+      "additionalProperties": true
+    },
+    "G1WifiApSettings": {
+      "type": "object",
+      "required": [ "enabled", "ssid", "key" ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "ssid": { "type": "string" },
+        "key": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "G1SntpSettings": {
+      "type": "object",
+      "required": [ "server", "enabled" ],
+      "properties": {
+        "server": { "type": "string" },
+        "enabled": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "G1MqttSettings": {
+      "type": "object",
+      "required": [
+        "enable",
+        "server",
+        "user",
+        "id",
+        "reconnect_timeout_max",
+        "reconnect_timeout_min",
+        "clean_session",
+        "keep_alive",
+        "max_qos",
+        "retain",
+        "update_period"
+      ],
+      "properties": {
+        "enable": { "type": "boolean" },
+        "server": { "type": "string" },
+        "user": { "type": "string" },
+        "id": { "type": "string" },
+        "reconnect_timeout_max": { "type": "number" },
+        "reconnect_timeout_min": { "type": "number" },
+        "clean_session": { "type": "boolean" },
+        "keep_alive": { "type": "number" },
+        "max_qos": { "type": "number" },
+        "retain": { "type": "boolean" },
+        "update_period": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G1ActionsSettings": {
+      "type": "object",
+      "required": [ "active", "names" ],
+      "properties": {
+        "active": { "type": "boolean" },
+        "names": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "G1RelayStatus": {
+      "type": "object",
+      "required": [
+        "mqtt",
+        "serial",
+        "inputs",
+        "uptime",
+        "_updated",
+        "has_update",
+        "ram_free",
+        "wifi_sta",
+        "unixtime",
+        "mac",
+        "update",
+        "ram_total",
+        "relays",
+        "actions_stats",
+        "cfg_changed_cnt",
+        "fs_free",
+        "cloud",
+        "time",
+        "fs_size"
+      ],
+      "properties": {
+        "ext_sensors": { "type": "object" },
+        "mqtt": {
+          "type": "object",
+          "required": [ "connected" ],
+          "properties": {
+            "connected": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        },
+        "serial": { "type": "number" },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/G1InputItem" }
+        },
+        "ext_humidity": { "type": "object" },
+        "meters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/G1RelayMeterItem" }
+        },
+        "uptime": { "type": "number" },
+        "_updated": { "type": "string" },
+        "has_update": { "type": "boolean" },
+        "ext_temperature": { "type": "object" },
+        "ram_free": { "type": "number" },
+        "wifi_sta": { "$ref": "#/$defs/G1WifiStaStatus" },
+        "unixtime": { "type": "number" },
+        "mac": { "type": [ "string", "number" ] },
+        "update": { "$ref": "#/$defs/G1UpdateStatus" },
+        "ram_total": { "type": "number" },
+        "relays": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/G1RelayRuntimeItem" }
+        },
+        "actions_stats": { "$ref": "#/$defs/G1ActionsStats" },
+        "cfg_changed_cnt": { "type": "number" },
+        "fs_free": { "type": "number" },
+        "cloud": { "$ref": "#/$defs/G1CloudStatus" },
+        "time": { "type": "string" },
+        "fs_size": { "type": "number" },
+        "overtemperature": { "type": "boolean" },
+        "getinfo": { "type": "object" },
+        "temperature_status": { "type": "string" },
+        "tmp": { "type": "object" },
+        "temperature": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G1RelaySettings": {
+      "type": "object",
+      "required": [
+        "tz_dst_auto",
+        "debug_enable",
+        "timezone",
+        "_updated",
+        "lng",
+        "eco_mode_enabled",
+        "wifi_sta",
+        "device",
+        "tz_utc_offset",
+        "coiot",
+        "factory_reset_from_switch",
+        "mode",
+        "tz_dst",
+        "build_info",
+        "allow_cross_origin",
+        "pin_code",
+        "login",
+        "longpush_time",
+        "wifi_ap",
+        "wifi_sta1",
+        "mqtt",
+        "sntp",
+        "actions",
+        "cloud",
+        "fw"
+      ],
+      "properties": {
+        "tz_dst_auto": { "type": "boolean" },
+        "debug_enable": { "type": "boolean" },
+        "timezone": { "type": "string" },
+        "_updated": { "type": "string" },
+        "lng": { "type": "number" },
+        "lat": { "type": "number" },
+        "ext_temperature": { "type": "object" },
+        "eco_mode_enabled": { "type": "boolean" },
+        "name": { "$ref": "#/$defs/NullOrString" },
+        "wifi_sta": { "$ref": "#/$defs/G1WifiStaSettings" },
+        "unixtime": { "type": "number" },
+        "device": { "type": "object" },
+        "tz_utc_offset": { "type": "number" },
+        "coiot": { "type": "object" },
+        "factory_reset_from_switch": { "type": "boolean" },
+        "mode": { "type": "string" },
+        "tz_dst": { "type": "boolean" },
+        "build_info": { "type": "object" },
+        "allow_cross_origin": { "type": "boolean" },
+        "pin_code": { "type": "string" },
+        "login": { "type": "object" },
+        "_gip_c": { "type": "string" },
+        "longpush_time": { "type": "number" },
+        "wifi_ap": { "$ref": "#/$defs/G1WifiApSettings" },
+        "wifi_sta1": { "$ref": "#/$defs/G1WifiStaSettings" },
+        "time": { "type": "string" },
+        "ext_switch": { "type": "object" },
+        "ext_sensors": { "type": "object" },
+        "mqtt": { "$ref": "#/$defs/G1MqttSettings" },
+        "hwinfo": { "type": "object" },
+        "ext_humidity": { "type": "object" },
+        "ext_switch_reverse": { "type": "boolean" },
+        "sntp": { "$ref": "#/$defs/G1SntpSettings" },
+        "actions": { "$ref": "#/$defs/G1ActionsSettings" },
+        "relays": { "type": "array" },
+        "pon_wifi_reset": { "type": "boolean" },
+        "ap_roaming": { "type": "object" },
+        "tzautodetect": { "type": "boolean" },
+        "discoverable": { "type": "boolean" },
+        "ext_switch_enable": { "type": "boolean" },
+        "cloud": { "$ref": "#/$defs/G1CloudStatus" },
+        "fw": { "type": "string" },
+        "led_status_disable": { "type": "boolean" },
+        "supply_voltage": { "type": "number" },
+        "power_correction": { "type": "number" },
+        "max_power": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G1SensorStatus": {
+      "type": "object",
+      "required": [
+        "mqtt",
+        "serial",
+        "bat",
+        "uptime",
+        "sensor",
+        "_updated",
+        "has_update",
+        "ram_free",
+        "wifi_sta",
+        "unixtime",
+        "mac",
+        "update",
+        "lux",
+        "ram_total",
+        "tmp",
+        "actions_stats",
+        "is_valid",
+        "cfg_changed_cnt",
+        "accel",
+        "cloud",
+        "sensor_error",
+        "time",
+        "fs_size"
+      ],
+      "properties": {
+        "mqtt": {
+          "type": "object",
+          "required": [ "connected" ],
+          "properties": {
+            "connected": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        },
+        "serial": { "type": "number" },
+        "bat": { "type": "object" },
+        "uptime": { "type": "number" },
+        "sensor": { "type": "object" },
+        "_updated": { "type": "string" },
+        "has_update": { "type": "boolean" },
+        "ram_free": { "type": "number" },
+        "wifi_sta": { "$ref": "#/$defs/G1WifiStaStatus" },
+        "unixtime": { "type": "number" },
+        "mac": { "type": "string" },
+        "update": { "$ref": "#/$defs/G1UpdateStatus" },
+        "lux": { "type": "object" },
+        "ram_total": { "type": "number" },
+        "tmp": { "type": "object" },
+        "actions_stats": { "$ref": "#/$defs/G1ActionsStats" },
+        "is_valid": { "type": "boolean" },
+        "cfg_changed_cnt": { "type": "number" },
+        "fs_free": { "type": "number" },
+        "accel": { "type": "object" },
+        "act_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "cloud": { "$ref": "#/$defs/G1CloudStatus" },
+        "sensor_error": { "type": "number" },
+        "time": { "type": "string" },
+        "fs_size": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G1SensorSettings": {
+      "type": "object",
+      "required": [
+        "tz_dst_auto",
+        "debug_enable",
+        "timezone",
+        "_updated",
+        "wifi_sta",
+        "device",
+        "tz_utc_offset",
+        "coiot",
+        "tz_dst",
+        "sensors",
+        "build_info",
+        "sleep_mode",
+        "allow_cross_origin",
+        "pin_code",
+        "login",
+        "wifi_ap",
+        "wifi_sta1",
+        "mqtt",
+        "sntp",
+        "actions",
+        "tzautodetect",
+        "discoverable",
+        "cloud",
+        "fw"
+      ],
+      "properties": {
+        "tz_dst_auto": { "type": "boolean" },
+        "debug_enable": { "type": "boolean" },
+        "timezone": { "type": [ "string", "null" ] },
+        "led_status_disable": { "type": "boolean" },
+        "_updated": { "type": "string" },
+        "lng": { "type": "number" },
+        "lat": { "type": "number" },
+        "name": { "$ref": "#/$defs/NullOrString" },
+        "wifi_sta": { "$ref": "#/$defs/G1WifiStaSettings" },
+        "unixtime": { "type": "number" },
+        "device": { "type": "object" },
+        "tz_utc_offset": { "type": "number" },
+        "coiot": { "type": "object" },
+        "tilt_calibrated": { "type": "boolean" },
+        "tz_dst": { "type": "boolean" },
+        "sensors": { "type": "object" },
+        "temperature_offset": { "type": "number" },
+        "build_info": { "type": "object" },
+        "sleep_mode": { "type": "object" },
+        "allow_cross_origin": { "type": "boolean" },
+        "pin_code": { "type": "string" },
+        "login": { "type": "object" },
+        "lux_wakeup_enable": { "type": "boolean" },
+        "wifi_ap": { "$ref": "#/$defs/G1WifiApSettings" },
+        "wifi_sta1": { "$ref": "#/$defs/G1WifiStaSettings" },
+        "time": { "type": "string" },
+        "mqtt": { "$ref": "#/$defs/G1MqttSettings" },
+        "vibration_sensitivity": { "type": "number" },
+        "dark_threshold": { "type": "number" },
+        "sntp": { "$ref": "#/$defs/G1SntpSettings" },
+        "actions": { "$ref": "#/$defs/G1ActionsSettings" },
+        "tilt_enabled": { "type": "boolean" },
+        "vibration_enabled": { "type": "boolean" },
+        "pon_wifi_reset": { "type": "boolean" },
+        "tzautodetect": { "type": "boolean" },
+        "discoverable": { "type": "boolean" },
+        "cloud": { "$ref": "#/$defs/G1CloudStatus" },
+        "twilight_threshold": { "type": "number" },
+        "reverse_open_close": { "type": "boolean" },
+        "fw": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "G2SysStatus": {
+      "type": "object",
+      "required": [ "mac" ],
+      "properties": {
+        "time": { "type": "string" },
+        "unixtime": { "type": "number" },
+        "mac": { "type": "string" },
+        "restart_required": { "type": "boolean" },
+        "last_sync_ts": { "type": "number" },
+        "uptime": { "type": "number" },
+        "ram_size": { "type": "number" },
+        "ram_free": { "type": "number" },
+        "ram_min_free": { "type": "number" },
+        "fs_size": { "type": "number" },
+        "fs_free": { "type": "number" },
+        "cfg_rev": { "type": "number" },
+        "kvs_rev": { "type": "number" },
+        "schedule_rev": { "type": "number" },
+        "webhook_rev": { "type": "number" },
+        "btrelay_rev": { "type": "number" },
+        "available_updates": { "type": "object" },
+        "reset_reason": { "type": "number" },
+        "utc_offset": { "type": "number" },
+        "wakeup_reason": { "type": "object" },
+        "wakeup_period": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G2WifiStatus": {
+      "type": "object",
+      "required": [ "status", "ssid", "rssi" ],
+      "properties": {
+        "sta_ip": { "type": "string" },
+        "sta_ip6": { "type": [ "string", "null" ] },
+        "status": { "type": "string" },
+        "ssid": { "type": "string" },
+        "bssid": { "type": "string" },
+        "rssi": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G2CloudStatus": {
+      "type": "object",
+      "required": [ "connected" ],
+      "properties": {
+        "connected": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "G2MqttStatus": {
+      "type": "object",
+      "required": [ "connected" ],
+      "properties": {
+        "connected": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "G2WsStatus": {
+      "type": "object",
+      "required": [ "connected" ],
+      "properties": {
+        "connected": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "G2InputStatus": {
+      "type": "object",
+      "required": [ "id", "state" ],
+      "properties": {
+        "id": { "type": "number" },
+        "state": { "type": [ "boolean", "null" ] },
+        "percent": { "type": [ "number", "null" ] },
+        "errors": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "G2VEventStatus": {
+      "type": "object",
+      "required": [ "id" ],
+      "properties": {
+        "id": { "type": "number" },
+        "ev": { "type": "string" },
+        "ttl": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G2SwitchStatus": {
+      "type": "object",
+      "required": [ "id" ],
+      "properties": {
+        "id": { "type": "number" },
+        "source": { "type": "string" },
+        "output": { "type": "boolean" },
+        "apower": { "type": "number" },
+        "voltage": { "type": "number" },
+        "freq": { "type": "number" },
+        "current": { "type": "number" },
+        "pf": { "type": "number" },
+        "temperature": { "type": "object" },
+        "aenergy": { "type": "object" },
+        "ret_aenergy": { "type": "object" },
+        "_attrs": { "type": "object" },
+        "timer_duration": { "type": "number" },
+        "timer_started_at": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G2ScriptStatus": {
+      "type": "object",
+      "required": [ "id", "running" ],
+      "properties": {
+        "id": { "type": "number" },
+        "running": { "type": "boolean" },
+        "mem_used": { "type": "number" },
+        "mem_peak": { "type": "number" },
+        "mem_free": { "type": "number" },
+        "cpu": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G2PmStatus": {
+      "type": "object",
+      "required": [ "id" ],
+      "properties": {
+        "id": { "type": "number" },
+        "aenergy": { "type": "object" },
+        "ret_aenergy": { "type": "object" },
+        "apower": { "type": "number" },
+        "current": { "type": "number" },
+        "freq": { "type": "number" },
+        "voltage": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G2EmStatus": {
+      "type": "object",
+      "required": [ "id" ],
+      "properties": {
+        "id": { "type": "number" },
+        "act_power": { "type": "number" },
+        "aprt_power": { "type": "number" },
+        "current": { "type": "number" },
+        "freq": { "type": "number" },
+        "pf": { "type": "number" },
+        "voltage": { "type": "number" },
+        "calibration": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "G2EmDataStatus": {
+      "type": "object",
+      "required": [ "id" ],
+      "properties": {
+        "id": { "type": "number" },
+        "total_act_energy": { "type": "number" },
+        "total_act_ret_energy": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "G2SettingsBase": {
+      "type": "object",
+      "required": [ "mqtt", "ble", "ws", "sys", "device", "DeviceInfo", "cloud", "wifi", "id" ],
+      "properties": {
+        "mqtt": { "type": "object" },
+        "ble": { "type": "object" },
+        "ws": { "type": "object" },
+        "_updated": { "type": "string" },
+        "sys": { "type": "object" },
+        "device": { "type": "object" },
+        "DeviceInfo": { "type": "object" },
+        "_gip_c": { "type": "string" },
+        "cloud": { "type": "object" },
+        "wifi": { "type": "object" },
+        "id": { "type": "string" },
+        "sleep_mode": { "type": "object" },
+        "zigbee": { "type": "object" },
+        "matter": { "type": "object" }
+      },
+      "patternProperties": {
+        "^input:[0-9]+$": { "type": "object" },
+        "^switch:[0-9]+$": { "type": "object" },
+        "^script:[0-9]+$": { "type": "object" },
+        "^pm1:[0-9]+$": { "type": "object" },
+        "^em1:[0-9]+$": { "type": "object" },
+        "^em1data:[0-9]+$": { "type": "object" },
+        "^flood:[0-9]+$": { "type": "object" },
+        "^devicepower:[0-9]+$": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "G2RelayStatus": {
+      "type": "object",
+      "required": [ "mqtt", "serial", "code", "_updated", "sys", "ble", "ws", "cloud", "wifi", "id" ],
+      "properties": {
+        "mqtt": { "$ref": "#/$defs/G2MqttStatus" },
+        "serial": { "type": "number" },
+        "code": { "type": "string" },
+        "_updated": { "type": "string" },
+        "sys": { "$ref": "#/$defs/G2SysStatus" },
+        "ble": { "type": "object" },
+        "ws": { "$ref": "#/$defs/G2WsStatus" },
+        "cloud": { "$ref": "#/$defs/G2CloudStatus" },
+        "wifi": { "$ref": "#/$defs/G2WifiStatus" },
+        "id": { "type": "string" },
+        "ts": { "type": "number" },
+        "bthome": { "type": "object" },
+        "zigbee": { "type": "object" },
+        "matter": { "type": "object" }
+      },
+      "patternProperties": {
+        "^input:[0-9]+$": { "$ref": "#/$defs/G2InputStatus" },
+        "^v_eve:[0-9]+$": { "$ref": "#/$defs/G2VEventStatus" },
+        "^switch:[0-9]+$": { "$ref": "#/$defs/G2SwitchStatus" },
+        "^script:[0-9]+$": { "$ref": "#/$defs/G2ScriptStatus" },
+        "^pm1:[0-9]+$": { "$ref": "#/$defs/G2PmStatus" },
+        "^em1:[0-9]+$": { "$ref": "#/$defs/G2EmStatus" },
+        "^em1data:[0-9]+$": { "$ref": "#/$defs/G2EmDataStatus" }
+      },
+      "additionalProperties": true
+    },
+    "G2InputsReaderStatus": {
+      "type": "object",
+      "required": [ "mqtt", "serial", "code", "_updated", "sys", "ble", "ws", "cloud", "wifi", "id" ],
+      "properties": {
+        "mqtt": { "$ref": "#/$defs/G2MqttStatus" },
+        "serial": { "type": "number" },
+        "code": { "type": "string" },
+        "_updated": { "type": "string" },
+        "sys": { "$ref": "#/$defs/G2SysStatus" },
+        "ble": { "type": "object" },
+        "ws": { "$ref": "#/$defs/G2WsStatus" },
+        "cloud": { "$ref": "#/$defs/G2CloudStatus" },
+        "wifi": { "$ref": "#/$defs/G2WifiStatus" },
+        "id": { "type": "string" },
+        "ts": { "type": "number" }
+      },
+      "patternProperties": {
+        "^input:[0-9]+$": { "$ref": "#/$defs/G2InputStatus" },
+        "^v_eve:[0-9]+$": { "$ref": "#/$defs/G2VEventStatus" },
+        "^script:[0-9]+$": { "$ref": "#/$defs/G2ScriptStatus" }
+      },
+      "additionalProperties": true
+    },
+    "G2SensorStatus": {
+      "type": "object",
+      "required": [ "mqtt", "serial", "code", "_updated", "sys", "ble", "ws", "cloud", "wifi", "id" ],
+      "properties": {
+        "mqtt": { "$ref": "#/$defs/G2MqttStatus" },
+        "serial": { "type": "number" },
+        "code": { "type": "string" },
+        "_updated": { "type": "string" },
+        "sys": { "$ref": "#/$defs/G2SysStatus" },
+        "ble": { "type": "object" },
+        "ws": { "$ref": "#/$defs/G2WsStatus" },
+        "cloud": { "$ref": "#/$defs/G2CloudStatus" },
+        "wifi": { "$ref": "#/$defs/G2WifiStatus" },
+        "id": { "type": "string" },
+        "ts": { "type": "number" },
+        "zigbee": { "type": "object" },
+        "matter": { "type": "object" }
+      },
+      "patternProperties": {
+        "^devicepower:[0-9]+$": { "type": "object" },
+        "^flood:[0-9]+$": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "GBLEStatus": {
+      "type": "object",
+      "required": [ "serial", "_updated" ],
+      "properties": {
+        "serial": { "type": "number" },
+        "_updated": { "type": "string" },
+        "reporter": { "type": "object" }
+      },
+      "patternProperties": {
+        "^[A-Za-z_]+:[0-9]+$": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "GBLESettings": {
+      "type": "object",
+      "required": [ "device", "_updated" ],
+      "properties": {
+        "device": { "type": "object" },
+        "_updated": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "Device": {
+      "type": "object",
+      "required": [ "id", "type", "code", "gen", "online", "status", "settings" ],
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": [ "relay", "sensor", "inputs_reader" ]
+        },
+        "code": { "type": "string" },
+        "gen": {
+          "type": "string",
+          "enum": [ "G1", "G2", "GBLE" ]
+        },
+        "online": { "$ref": "#/$defs/BooleanInt" },
+        "pending_cmds": { "type": "number" },
+        "sleeping": { "$ref": "#/$defs/BooleanInt" },
+        "status": { "type": "object" },
+        "settings": { "type": "object" }
+      },
+      "additionalProperties": true,
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "properties": {
+                "gen": { "const": "G1" },
+                "type": { "const": "relay" }
+              },
+              "required": [ "gen", "type" ]
+            },
+            {
+              "properties": {
+                "status": { "$ref": "#/$defs/G1RelayStatus" },
+                "settings": { "$ref": "#/$defs/G1RelaySettings" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "gen": { "const": "G1" },
+                "type": { "const": "sensor" },
+                "code": { "const": "SHDW-2" }
+              },
+              "required": [ "gen", "type", "code", "pending_cmds", "sleeping" ]
+            },
+            {
+              "properties": {
+                "status": { "$ref": "#/$defs/G1SensorStatus" },
+                "settings": { "$ref": "#/$defs/G1SensorSettings" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "gen": { "const": "G2" },
+                "type": { "const": "relay" }
+              },
+              "required": [ "gen", "type" ]
+            },
+            {
+              "properties": {
+                "status": { "$ref": "#/$defs/G2RelayStatus" },
+                "settings": { "$ref": "#/$defs/G2SettingsBase" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "gen": { "const": "G2" },
+                "type": { "const": "inputs_reader" }
+              },
+              "required": [ "gen", "type" ]
+            },
+            {
+              "properties": {
+                "status": { "$ref": "#/$defs/G2InputsReaderStatus" },
+                "settings": { "$ref": "#/$defs/G2SettingsBase" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "gen": { "const": "G2" },
+                "type": { "const": "sensor" }
+              },
+              "required": [ "gen", "type" ]
+            },
+            {
+              "properties": {
+                "status": { "$ref": "#/$defs/G2SensorStatus" },
+                "settings": { "$ref": "#/$defs/G2SettingsBase" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "gen": { "const": "GBLE" },
+                "type": { "const": "sensor" }
+              },
+              "required": [ "gen", "type" ]
+            },
+            {
+              "properties": {
+                "status": { "$ref": "#/$defs/GBLEStatus" },
+                "settings": { "$ref": "#/$defs/GBLESettings" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            {
+              "properties": {
+                "gen": { "const": "GBLE" },
+                "type": { "const": "inputs_reader" }
+              },
+              "required": [ "gen", "type" ]
+            },
+            {
+              "properties": {
+                "status": { "$ref": "#/$defs/GBLEStatus" },
+                "settings": { "$ref": "#/$defs/GBLESettings" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

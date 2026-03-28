@@ -1,10 +1,10 @@
-﻿using Asg.MCP.Models.Shelly;
+﻿using Giogdev.Shelly.Integrations.Models.Shelly;
 using Shelly.Models;
 using Shelly.Models.Cloud;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
 
-namespace Asg.MCP.Services
+namespace Giogdev.Shelly.Integrations.Services
 {
     public interface IShellyCloudService
     {

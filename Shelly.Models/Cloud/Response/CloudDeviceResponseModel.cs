@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Asg.MCP.Models.Shelly
+namespace Giogdev.Shelly.Integrations.Models.Shelly
 {
     public class CloudDeviceResponseModel
     {

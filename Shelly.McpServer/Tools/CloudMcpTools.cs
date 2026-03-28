@@ -1,5 +1,5 @@
-﻿using Asg.MCP.Models.Shelly;
-using Asg.MCP.Services;
+﻿using Giogdev.Shelly.Integrations.Models.Shelly;
+using Giogdev.Shelly.Integrations.Services;
 using ModelContextProtocol.Server;
 using Shelly.Models;
 using Shelly.Models.Cloud;

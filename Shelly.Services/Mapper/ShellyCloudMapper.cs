@@ -1,4 +1,4 @@
-﻿using Asg.MCP.Models.Shelly;
+﻿using Giogdev.Shelly.Integrations.Models.Shelly;
 using Shelly.Models;
 using System;
 using System.Collections.Generic;

@@ -5,7 +5,7 @@ using Shelly.Services.Exceptions;
 using Shelly.Services.Utils;
 using System.Text.Json;
 
-namespace Asg.MCP.Services
+namespace Giogdev.Shelly.Integrations.Services
 {
     /// <summary>
     /// Partial class containing statistics operations.

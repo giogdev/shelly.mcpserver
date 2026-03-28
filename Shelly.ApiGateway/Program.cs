@@ -1,4 +1,4 @@
-using Asg.MCP.Services;
+using Giogdev.Shelly.Integrations.Services;
 using Scalar.AspNetCore;
 using Shelly.ApiGateway.Endpoints;
 using Shelly.Models;
