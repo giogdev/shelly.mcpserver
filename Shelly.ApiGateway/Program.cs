@@ -24,6 +24,10 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// Populate device store from Shelly Cloud at startup
+var shellyService = app.Services.GetRequiredService<IShellyCloudService>();
+await shellyService.FetchAndPopulateDevicesAsync();
+
 if (app.Environment.IsDevelopment())
 {
 

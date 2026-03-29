@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Polly;
 using Shelly.Services.Utils;
 using Shelly.Models.Cloud;
+using Shelly.Models.Cloud.Response;
 using Shelly.Models;
 using Shelly.Services.Mapper;
 using Shelly.Services.Services;
@@ -119,6 +120,132 @@ namespace Giogdev.Shelly.Integrations.Services
         }
 
         /// <summary>
+        /// Fetch all devices from Shelly Cloud and populate the local device store.
+        /// </summary>
+        public async Task FetchAndPopulateDevicesAsync()
+        {
+            var request = new GetAllDevicesRequest
+            {
+                Select = ["status", "settings"],
+                Show = ["offline", "shared"]
+            };
+
+            var content = _serializeAndPreparePayloadForHttpRequest(request);
+            var url = $"https://{_host}/v2/devices/get?auth_key={_authKey}";
+
+            using var response = await HttpPolicies.standardRetryPolicy.ExecuteAsync(async (context) =>
+                await _httpClient.PostAsync(url, content), new Context { });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"FetchAndPopulateDevicesAsync failed with status {response.StatusCode}: {errorContent}");
+            }
+
+            var devices = await _deserializeApiResponseAsync<GetDevicesResponseModel>(response);
+
+            if (devices == null || devices.Count == 0)
+            {
+                Console.WriteLine("[WARNING] FetchAndPopulateDevicesAsync: No devices returned from API.");
+                return;
+            }
+
+            var storeItems = new List<DeviceNameMappingStoreItem>();
+
+            foreach (var device in devices)
+            {
+                if (device.Settings == null)
+                {
+                    Console.WriteLine($"[WARNING] Device {device.Id}: settings is null, skipping.");
+                    continue;
+                }
+
+                var settings = device.Settings.Value;
+
+                if (device.Gen == "G1")
+                {
+                    // G1: name is at the top level of settings
+                    string name = _tryGetStringProperty(settings, "name") ?? string.Empty;
+                    if (string.IsNullOrEmpty(name))
+                        Console.WriteLine($"[WARNING] Device {device.Id} (G1): name not found in settings.");
+
+                    storeItems.Add(new DeviceNameMappingStoreItem
+                    {
+                        DeviceId = device.Id,
+                        FriendlyNames = string.IsNullOrEmpty(name) ? [] : [name],
+                        ChannelId = 0,
+                        DeviceType = device?.Type ?? device?.Code ?? ""
+                    });
+                }
+                else
+                {
+                    // G2/GBLE: look for switch:0, switch:1, etc.
+                    bool foundSwitch = false;
+                    for (int channel = 0; channel <= 3; channel++)
+                    {
+                        string switchKey = $"switch:{channel}";
+                        if (settings.TryGetProperty(switchKey, out JsonElement switchElement))
+                        {
+                            foundSwitch = true;
+                            string name = _tryGetStringProperty(switchElement, "name") ?? string.Empty;
+                            if (string.IsNullOrEmpty(name))
+                                Console.WriteLine($"[WARNING] Device {device.Id} ({switchKey}): name not found.");
+
+                            storeItems.Add(new DeviceNameMappingStoreItem
+                            {
+                                DeviceId = device.Id,
+                                FriendlyNames = string.IsNullOrEmpty(name) ? [] : [name],
+                                ChannelId = channel,
+                                DeviceType = device?.Type ?? device?.Code ?? ""
+                            });
+                        }
+                    }
+
+                    // Fallback: look in script:0, script:1, etc.
+                    if (!foundSwitch)
+                    {
+                        bool foundScript = false;
+                        for (int i = 0; i <= 3; i++)
+                        {
+                            string scriptKey = $"script:{i}";
+                            if (settings.TryGetProperty(scriptKey, out JsonElement scriptElement))
+                            {
+                                foundScript = true;
+                                string name = _tryGetStringProperty(scriptElement, "name") ?? string.Empty;
+                                if (string.IsNullOrEmpty(name))
+                                    Console.WriteLine($"[WARNING] Device {device.Id} ({scriptKey}): name not found.");
+
+                                storeItems.Add(new DeviceNameMappingStoreItem
+                                {
+                                    DeviceId = device.Id,
+                                    FriendlyNames = string.IsNullOrEmpty(name) ? [] : [name],
+                                    ChannelId = i,
+                                    DeviceType = device?.Type ?? device?.Code ?? ""
+                                });
+                            }
+                        }
+
+                        // Final fallback: no switch or script found
+                        if (!foundScript)
+                        {
+                            Console.WriteLine($"[WARNING] Device {device.Id}: no switch or script found in settings, mapping with empty name.");
+                            storeItems.Add(new DeviceNameMappingStoreItem
+                            {
+                                DeviceId = device.Id,
+                                FriendlyNames = [],
+                                ChannelId = 0,
+                                DeviceType = device?.Type ?? device?.Code ?? ""
+                            });
+                        }
+                    }
+                }
+            }
+
+            _deviceStore.UpdateStore(storeItems);
+            Console.WriteLine($"[INFO] FetchAndPopulateDevicesAsync: populated store with {storeItems.Count} device(s).");
+        }
+
+        /// <summary>
         /// Change state of device (ex. light on - light off)
         /// </summary>
         /// <param name="switchRequest"></param>
@@ -145,6 +272,13 @@ namespace Giogdev.Shelly.Integrations.Services
         }
 
         #region Private
+
+        private static string? _tryGetStringProperty(JsonElement element, string propertyName)
+        {
+            if (element.TryGetProperty(propertyName, out JsonElement value) && value.ValueKind == JsonValueKind.String)
+                return value.GetString();
+            return null;
+        }
 
         /// <summary>
         /// Serialize and encode object for api call

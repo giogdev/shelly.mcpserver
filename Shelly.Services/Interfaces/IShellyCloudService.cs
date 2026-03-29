@@ -33,6 +33,11 @@ namespace Giogdev.Shelly.Integrations.Services
         DeviceNameMappingStoreItem? GetDeviceByFriendlyName(string name);
         IEnumerable<DeviceNameMappingStoreItem> GeKnownDevices();
 
+        /// <summary>
+        /// Fetches all devices from Shelly Cloud and populates the local device store.
+        /// </summary>
+        Task FetchAndPopulateDevicesAsync();
+
         #endregion
     }
 }

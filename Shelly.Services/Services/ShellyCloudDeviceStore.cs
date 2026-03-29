@@ -11,7 +11,8 @@ namespace Shelly.Services.Services
 {
     public class ShellyCloudDeviceStore
     {
-        public IEnumerable<DeviceNameMappingStoreItem> Store { get; }
+        private List<DeviceNameMappingStoreItem> _store;
+        public IEnumerable<DeviceNameMappingStoreItem> Store => _store;
 
         public ShellyCloudDeviceStore(IConfiguration configuration)
         {
@@ -19,7 +20,7 @@ namespace Shelly.Services.Services
             var mappingRequired = configuration.GetValue<bool>("DeviceMappingFileRequired");
             if (!mappingRequired)
             {
-                Store = [];
+                _store = new List<DeviceNameMappingStoreItem>();
                 return;
             }
 
@@ -29,7 +30,12 @@ namespace Shelly.Services.Services
                 throw new Exception("DeviceMappingFile is empty");
             }
             var json = File.ReadAllText(mappingFile);
-            Store = JsonSerializer.Deserialize<List<DeviceNameMappingStoreItem>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+            _store = JsonSerializer.Deserialize<List<DeviceNameMappingStoreItem>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true }) ?? new List<DeviceNameMappingStoreItem>();
+        }
+
+        public void UpdateStore(IEnumerable<DeviceNameMappingStoreItem> devices)
+        {
+            _store = new List<DeviceNameMappingStoreItem>(devices);
         }
     }
 }
