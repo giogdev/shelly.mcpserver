@@ -23,7 +23,7 @@ public static class SwitchEndpoints
             SwitchRequest body,
             IShellyCloudService shellyService) =>
         {
-            DeviceNameMappingStoreItem? device = shellyService.GeKnownDevices()
+            DeviceNameMappingStoreItem? device = shellyService.GetKnownDevices()
                 .FirstOrDefault(d => d.DeviceId == deviceId);
             if (device is null)
                 return TypedResults.NotFound(new ApiErrorResponse($"No device found with id '{deviceId}'."));

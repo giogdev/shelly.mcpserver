@@ -30,7 +30,7 @@ namespace Shelly.Services.Mapper
             else
             {
                 model.Status = (device?.Status?.Switch1?.Output ?? false) ? TURNED_ON : TURNED_OFF;
-                model.Watt = device?.Status?.Switch0?.APower ?? -1;
+                model.Watt = device?.Status?.Switch1?.APower ?? -1;
             }
             
 

@@ -1,0 +1,46 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug: MCP Server",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Shelly.McpServer/bin/Debug/net10.0/Shelly.McpServer.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Shelly.McpServer",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "env": {}
+        },
+        {
+            "name": "Debug: API Gateway",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Shelly.ApiGateway/bin/Debug/net10.0/Shelly.ApiGateway.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Shelly.ApiGateway",
+            "stopAtEntry": false,
+            "console": "integratedTerminal",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://localhost:5284"
+            }
+        },
+        {
+            "name": "Run: Tests",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/Shelly.Test/Shelly.Test.csproj"
+            ],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "integratedTerminal"
+        }
+    ]
+}

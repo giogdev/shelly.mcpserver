@@ -75,7 +75,7 @@ namespace Shelly.McpServer.Tools
         [McpServerTool, Description("Get list of your shelly devices")]
         public IEnumerable<DeviceNameMappingStoreItem> GetDevices()
         {
-            return _shellyCloudService.GeKnownDevices();
+            return _shellyCloudService.GetKnownDevices();
         }
 
         [McpServerTool, Description("Set ON or OFF on Shelly device (ex. light or switch device)")]

@@ -31,7 +31,7 @@ namespace Giogdev.Shelly.Integrations.Services
 
         Task<string> ControlSwitchDevice(CloudDeviceSwitchRequest switchRequest);
         DeviceNameMappingStoreItem? GetDeviceByFriendlyName(string name);
-        IEnumerable<DeviceNameMappingStoreItem> GeKnownDevices();
+        IEnumerable<DeviceNameMappingStoreItem> GetKnownDevices();
 
         /// <summary>
         /// Fetches all devices from Shelly Cloud and populates the local device store.

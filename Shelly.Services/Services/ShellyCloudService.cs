@@ -10,6 +10,7 @@ using Shelly.Models.Cloud.Response;
 using Shelly.Models;
 using Shelly.Services.Mapper;
 using Shelly.Services.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Giogdev.Shelly.Integrations.Services
 {
@@ -18,25 +19,61 @@ namespace Giogdev.Shelly.Integrations.Services
     /// </summary>
     public partial class ShellyCloudService : IShellyCloudService
     {
+        private const string DeviceCodeDoorWindowGen1 = "SHDW-2";
+        private const string DeviceCodeRelayGen1 = "SHSW-1";
+        private const string DeviceCodePlus2PmGen2 = "SNSW-102P16EU";
+
+        private static readonly JsonSerializerOptions _serializeOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
+        private static readonly JsonSerializerOptions _deserializeOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
+
+        private static readonly Dictionary<string, Func<CloudDeviceResponseModel, int, GenericDeviceStatusModel>> _deviceMappers =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                [DeviceCodeDoorWindowGen1] = (device, _) => ShellyCloudMapper.MapDoorWindowGen1Device(device),
+                [DeviceCodeRelayGen1] = (device, _) => ShellyCloudMapper.MapRelayDevice(device),
+                [DeviceCodePlus2PmGen2] = (device, channel) => ShellyCloudMapper.MapSwitchDevice(device, channel)
+            };
+
         private readonly string _host;
         private readonly string _authKey;
         private readonly HttpClient _httpClient;
         private readonly ShellyCloudDeviceStore _deviceStore;
+        private readonly ILogger<ShellyCloudService> _logger;
 
-        public ShellyCloudService(IConfiguration _config, IHttpClientFactory _clientFactory, ShellyCloudDeviceStore _store)
+        public ShellyCloudService(
+            IConfiguration config,
+            IHttpClientFactory clientFactory,
+            ShellyCloudDeviceStore store,
+            ILogger<ShellyCloudService> logger)
         {
-            _httpClient = _clientFactory.CreateClient("ShellyCloudClient");
-            _host = _config["SHELLY_API_ENDPOINT"] ?? throw new Exception("SHELLY_API_ENDPOINT key not provided");
-            _authKey = _config["SHELLY_API_KEY"] ?? throw new Exception("SHELLY_API_KEY key not provided");
-            _deviceStore = _store;
+            _httpClient = clientFactory.CreateClient("ShellyCloudClient");
+            _host = config["SHELLY_API_ENDPOINT"] ?? throw new InvalidOperationException("SHELLY_API_ENDPOINT key not provided");
+            _authKey = config["SHELLY_API_KEY"] ?? throw new InvalidOperationException("SHELLY_API_KEY key not provided");
+            _deviceStore = store;
+            _logger = logger;
         }
 
         /// <summary>
         /// Get list of devices
         /// </summary>
-        public IEnumerable<DeviceNameMappingStoreItem> GeKnownDevices()
+        public IEnumerable<DeviceNameMappingStoreItem> GetKnownDevices()
         {
             return _deviceStore.Store;
+        }
+
+        [Obsolete("Use GetKnownDevices instead.")]
+        public IEnumerable<DeviceNameMappingStoreItem> GeKnownDevices()
+        {
+            return GetKnownDevices();
         }
 
         /// <summary>
@@ -59,20 +96,7 @@ namespace Giogdev.Shelly.Integrations.Services
                 Select = [CloudSelectRequestOption.Status]
             };
 
-            var content = _serializeAndPreparePayloadForHttpRequest(request);
-            var url = $"https://{_host}/v2/devices/api/get?auth_key={_authKey}";
-
-            //Get response from endpoint
-            using var response = await HttpPolicies.standardRetryPolicy.ExecuteAsync(async (context) =>
-            await _httpClient.PostAsync(url, content), new Context { }); 
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"API call failed with status {response.StatusCode}: {errorContent}");
-            }
-
-            var apiResult = await _deserializeApiResponseAsync<CloudDeviceResponseModel[]>(response);
+            var apiResult = await PostApiAsync<CloudDeviceRequest, CloudDeviceResponseModel[]>("/v2/devices/api/get", request);
 
             if(apiResult!= null)
             {
@@ -84,19 +108,14 @@ namespace Giogdev.Shelly.Integrations.Services
                     //Map response (only if I found device in cloud response)
                     if (cloudDevice != null)
                     {
-                        switch (cloudDevice.Code)
+                        if (!string.IsNullOrWhiteSpace(cloudDevice.Code) &&
+                            _deviceMappers.TryGetValue(cloudDevice.Code, out var mapper))
                         {
-                            case "SHDW-2": //Shelly door window (Gen2)
-                                mappedDevices.Add(ShellyCloudMapper.MapDoorWindowGen1Device(cloudDevice));
-                                break;
-                            case "SHSW-1": //Shelly 1 (Gen1)
-                                mappedDevices.Add(ShellyCloudMapper.MapRelayDevice(cloudDevice));
-                                break;
-                            case "SNSW-102P16EU": //Shelly plus 2PM (Gen2)
-                            default:
-                                mappedDevices.Add(ShellyCloudMapper.MapSwitchDevice(cloudDevice, requestedDevice.ChannelId));
-                                break;
-
+                            mappedDevices.Add(mapper(cloudDevice, requestedDevice.ChannelId));
+                        }
+                        else
+                        {
+                            mappedDevices.Add(ShellyCloudMapper.MapSwitchDevice(cloudDevice, requestedDevice.ChannelId));
                         }
                     }
                     
@@ -130,30 +149,18 @@ namespace Giogdev.Shelly.Integrations.Services
                 Show = ["offline", "shared"]
             };
 
-            var content = _serializeAndPreparePayloadForHttpRequest(request);
-            var url = $"https://{_host}/v2/devices/get?auth_key={_authKey}";
-
-            using var response = await HttpPolicies.standardRetryPolicy.ExecuteAsync(async (context) =>
-                await _httpClient.PostAsync(url, content), new Context { });
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"FetchAndPopulateDevicesAsync failed with status {response.StatusCode}: {errorContent}");
-            }
-
-            var devices = await _deserializeApiResponseAsync<GetDevicesResponseModel>(response);
+            var devices = await PostApiAsync<GetAllDevicesRequest, GetDevicesResponseModel>("/v2/devices/get", request);
 
             if (devices == null || devices.Count == 0)
             {
-                Console.WriteLine("[WARNING] FetchAndPopulateDevicesAsync: No devices returned from API.");
+                _logger.LogWarning("FetchAndPopulateDevicesAsync: no devices returned from API.");
                 return;
             }
 
             var storeItems = ShellyCloudMapper.MapDevicesToStoreItems(devices);
 
             _deviceStore.UpdateStore(storeItems);
-            Console.WriteLine($"[INFO] FetchAndPopulateDevicesAsync: populated store with {storeItems.Count} device(s).");
+            _logger.LogInformation("FetchAndPopulateDevicesAsync: populated store with {DeviceCount} device(s).", storeItems.Count);
         }
 
         /// <summary>
@@ -166,12 +173,32 @@ namespace Giogdev.Shelly.Integrations.Services
         {
             if (switchRequest.ToggleAfter <= 0) switchRequest.ToggleAfter = null;
 
-            var content = _serializeAndPreparePayloadForHttpRequest(switchRequest);
-            string url = $"https://{_host}/v2/devices/api/set/switch?auth_key={_authKey}";
+            return await PostApiRawAsync("/v2/devices/api/set/switch", switchRequest);
+        }
 
-            //API call with Polly
-            using var response = await HttpPolicies.standardRetryPolicy.ExecuteAsync(async (context) =>
-            await _httpClient.PostAsync(url, content), new Context { });
+        #region Private
+
+        private async Task<TResponse?> PostApiAsync<TRequest, TResponse>(string path, TRequest request)
+            where TResponse : class
+        {
+            using var response = await PostApiAsync(path, request);
+            return await _deserializeApiResponseAsync<TResponse>(response);
+        }
+
+        private async Task<string> PostApiRawAsync<TRequest>(string path, TRequest request)
+        {
+            using var response = await PostApiAsync(path, request);
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        private async Task<HttpResponseMessage> PostApiAsync<TRequest>(string path, TRequest request)
+        {
+            var content = _serializeAndPreparePayloadForHttpRequest(request);
+            var url = $"https://{_host}{path}?auth_key={_authKey}";
+
+            var response = await HttpPolicies.standardRetryPolicy.ExecuteAsync(
+                async (context) => await _httpClient.PostAsync(url, content),
+                new Context());
 
             if (!response.IsSuccessStatusCode)
             {
@@ -179,10 +206,8 @@ namespace Giogdev.Shelly.Integrations.Services
                 throw new HttpRequestException($"API call failed with status {response.StatusCode}: {errorContent}");
             }
 
-            return await response.Content.ReadAsStringAsync();
+            return response;
         }
-
-        #region Private
 
         /// <summary>
         /// Serialize and encode object for api call
@@ -190,13 +215,9 @@ namespace Giogdev.Shelly.Integrations.Services
         /// <typeparam name="T"></typeparam>
         /// <param name="payload"></param>
         /// <returns></returns>
-        public StringContent _serializeAndPreparePayloadForHttpRequest<T>(T payload)
+        private StringContent _serializeAndPreparePayloadForHttpRequest<T>(T payload)
         {
-            string serializedPayload = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
+            string serializedPayload = JsonSerializer.Serialize(payload, _serializeOptions);
 
             return new StringContent(serializedPayload, System.Text.Encoding.UTF8, "application/json");
         }
@@ -207,15 +228,11 @@ namespace Giogdev.Shelly.Integrations.Services
         /// <typeparam name="T">Type of expected class</typeparam>
         /// <param name="apiResponse"></param>
         /// <returns></returns>
-        public async Task<T?> _deserializeApiResponseAsync<T>(HttpResponseMessage apiResponse) where T : class
+        private async Task<T?> _deserializeApiResponseAsync<T>(HttpResponseMessage apiResponse) where T : class
         {
             var responseContent = await apiResponse.Content.ReadAsStringAsync();
 
-            return JsonSerializer.Deserialize<T>(responseContent, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                PropertyNameCaseInsensitive = true
-            });
+            return JsonSerializer.Deserialize<T>(responseContent, _deserializeOptions);
         }
 
         #endregion
