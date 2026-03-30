@@ -21,16 +21,18 @@ namespace Shelly.Services.Services
             if (!mappingRequired)
             {
                 _store = new List<DeviceNameMappingStoreItem>();
-                return;
-            }
 
-            var mappingFile = configuration["DeviceMappingFile"];
-            if (string.IsNullOrEmpty(mappingFile) || !File.Exists(mappingFile))
-            {
-                throw new Exception("DeviceMappingFile is empty");
             }
-            var json = File.ReadAllText(mappingFile);
-            _store = JsonSerializer.Deserialize<List<DeviceNameMappingStoreItem>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true }) ?? new List<DeviceNameMappingStoreItem>();
+            else
+            {
+                var mappingFile = configuration["DeviceMappingFile"];
+                if (string.IsNullOrEmpty(mappingFile) || !File.Exists(mappingFile))
+                {
+                    throw new Exception("DeviceMappingFile is empty");
+                }
+                var json = File.ReadAllText(mappingFile);
+                _store = JsonSerializer.Deserialize<List<DeviceNameMappingStoreItem>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true }) ?? new List<DeviceNameMappingStoreItem>();
+            }
         }
 
         public void UpdateStore(IEnumerable<DeviceNameMappingStoreItem> devices)
