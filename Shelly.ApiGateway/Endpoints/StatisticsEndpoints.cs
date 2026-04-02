@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Shelly.Models;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
-using Shelly.Services.Exceptions;
+using Shelly.Models.Exceptions;
 
 namespace Shelly.ApiGateway.Endpoints;
 

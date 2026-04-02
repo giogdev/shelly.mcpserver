@@ -9,9 +9,10 @@ services:
     environment:
       - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
       - SHELLY_API_KEY=${SHELLY_API_KEY}
-      - DeviceMappingFile=/app/devices.json
+      - DeviceMappingFile=/app/devices.json # Optional, if you have a custom devices.json file to use
+      # Optional, if you have a custom devices.json file to use
     volumes:
-      - 'C:\Container\Shelly\devices.json:/app/devices.json:ro'
+      - '<your-path>\devices.json:/app/devices.json:ro'
     stdin_open: true
     tty: false
 
@@ -24,4 +25,7 @@ services:
     environment:
       - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
       - SHELLY_API_KEY=${SHELLY_API_KEY}
-      - DeviceMappingFileRequired=false
+      - DeviceMappingFile=/app/devices.json # Optional, if you have a custom devices.json file to use
+    # Optional, if you have a custom devices.json file to use
+    volumes:
+      - '<your-path>\devices.json:/app/devices.json:ro'

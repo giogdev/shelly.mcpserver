@@ -9,35 +9,50 @@ using System.Threading.Tasks;
 
 namespace Shelly.Services.Services
 {
-    public class ShellyCloudDeviceStore
+    public class ShellyCloudDeviceStore(IConfiguration configuration)
     {
-        private List<DeviceNameMappingStoreItem> _store;
+        private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+        private List<DeviceNameMappingStoreItem> _store = LoadFromConfiguration(configuration);
         public IEnumerable<DeviceNameMappingStoreItem> Store => _store;
-
-        public ShellyCloudDeviceStore(IConfiguration configuration)
-        {
-            // When DeviceMappingFileRequired is false (or not set), skip file loading entirely.
-            var mappingRequired = configuration.GetValue<bool>("DeviceMappingFileRequired");
-            if (!mappingRequired)
-            {
-                _store = new List<DeviceNameMappingStoreItem>();
-
-            }
-            else
-            {
-                var mappingFile = configuration["DeviceMappingFile"];
-                if (string.IsNullOrEmpty(mappingFile) || !File.Exists(mappingFile))
-                {
-                    throw new Exception("DeviceMappingFile is empty");
-                }
-                var json = File.ReadAllText(mappingFile);
-                _store = JsonSerializer.Deserialize<List<DeviceNameMappingStoreItem>>(json, new JsonSerializerOptions() { PropertyNameCaseInsensitive = true }) ?? new List<DeviceNameMappingStoreItem>();
-            }
-        }
 
         public void UpdateStore(IEnumerable<DeviceNameMappingStoreItem> devices)
         {
-            _store = new List<DeviceNameMappingStoreItem>(devices);
+            foreach (var device in devices)
+            {
+                var existing = _store.FirstOrDefault(s => s.DeviceId == device.DeviceId);
+                if (existing != null)
+                {
+                    existing.FriendlyNames = [.. (existing.FriendlyNames ?? []).Union(device.FriendlyNames ?? [])];
+                    existing.ChannelId = device.ChannelId;
+                    existing.DeviceType = device.DeviceType;
+                }
+                else
+                {
+                    _store.Add(device);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reset and re-initialize devices store
+        /// </summary>
+        public void ReinitializeDeviceStore()
+        {
+            _store = LoadFromConfiguration(configuration);
+        }
+
+        private static List<DeviceNameMappingStoreItem> LoadFromConfiguration(IConfiguration configuration)
+        {
+            var mappingFile = configuration["DeviceMappingFile"];
+
+            if (string.IsNullOrEmpty(mappingFile) || !File.Exists(mappingFile))
+            {
+                return [];
+            }
+
+            var json = File.ReadAllText(mappingFile);
+            return JsonSerializer.Deserialize<List<DeviceNameMappingStoreItem>>(json, JsonOptions) ?? [];
         }
     }
 }

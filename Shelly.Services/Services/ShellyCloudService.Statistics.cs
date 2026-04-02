@@ -1,7 +1,7 @@
 using Polly;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
-using Shelly.Services.Exceptions;
+using Shelly.Models.Exceptions;
 using Shelly.Services.Utils;
 using System.Text.Json;
 

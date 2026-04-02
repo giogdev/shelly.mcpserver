@@ -6,7 +6,7 @@ using NSubstitute;
 using Shelly.Models.Cloud;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
-using Shelly.Services.Exceptions;
+using Shelly.Models.Exceptions;
 using Shelly.Services.Services;
 using Shelly.Test.Helpers;
 using System.Net;
@@ -27,10 +27,7 @@ public class ShellyCloudServiceTests
         _config["SHELLY_API_ENDPOINT"].Returns("shelly-00-eu.shelly.cloud");
         _config["SHELLY_API_KEY"].Returns("test-api-key");
 
-        // ShellyCloudDeviceStore needs DeviceMappingFileRequired to be false for empty store
-        var storeConfig = Substitute.For<IConfiguration>();
-        storeConfig.GetSection("DeviceMappingFileRequired").Value.Returns("false");
-        _deviceStore = new ShellyCloudDeviceStore(storeConfig);
+        _deviceStore = new ShellyCloudDeviceStore(Substitute.For<IConfiguration>());
 
         _clientFactory = Substitute.For<IHttpClientFactory>();
         _logger = Substitute.For<ILogger<ShellyCloudService>>();

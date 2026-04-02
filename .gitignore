@@ -373,3 +373,4 @@ Shelly.ApiGateway/appsettings.Development.json
 # Claude Code - personal memories
 .claude/projects/
 docs/response-examples/v2-devices-get.json
+Shelly.ApiGateway/devices.json

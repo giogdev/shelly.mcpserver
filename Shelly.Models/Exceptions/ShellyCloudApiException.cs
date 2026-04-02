@@ -1,8 +1,9 @@
-namespace Shelly.Services.Exceptions;
+namespace Shelly.Models.Exceptions;
 
 /// <summary>
 /// Thrown when the Shelly Cloud API rejects a request at the application level
 /// (e.g. device_not_found) regardless of the HTTP status code returned.
+/// Used by the presentation layer to map to the appropriate HTTP status code.
 /// </summary>
 public class ShellyCloudApiException : Exception
 {
