@@ -8,6 +8,7 @@ using Shelly.Services.Utils;
 using Shelly.Models.Cloud;
 using Shelly.Models.Cloud.Response;
 using Shelly.Models;
+using Shelly.Services;
 using Shelly.Services.Mapper;
 using Shelly.Services.Services;
 using Microsoft.Extensions.Logging;
@@ -19,10 +20,6 @@ namespace Giogdev.Shelly.Integrations.Services
     /// </summary>
     public partial class ShellyCloudService : IShellyCloudService
     {
-        private const string DeviceCodeDoorWindowGen1 = "SHDW-2";
-        private const string DeviceCodeRelayGen1 = "SHSW-1";
-        private const string DeviceCodePlus2PmGen2 = "SNSW-102P16EU";
-
         private static readonly JsonSerializerOptions _serializeOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -35,31 +32,32 @@ namespace Giogdev.Shelly.Integrations.Services
             PropertyNameCaseInsensitive = true
         };
 
-        private static readonly Dictionary<string, Func<CloudDeviceResponseModel, int, GenericDeviceStatusModel>> _deviceMappers =
-            new(StringComparer.OrdinalIgnoreCase)
-            {
-                [DeviceCodeDoorWindowGen1] = (device, _) => ShellyCloudMapper.MapDoorWindowGen1Device(device),
-                [DeviceCodeRelayGen1] = (device, _) => ShellyCloudMapper.MapRelayDevice(device),
-                [DeviceCodePlus2PmGen2] = (device, channel) => ShellyCloudMapper.MapSwitchDevice(device, channel)
-            };
-
         private readonly string _host;
         private readonly string _authKey;
         private readonly HttpClient _httpClient;
         private readonly ShellyCloudDeviceStore _deviceStore;
         private readonly ILogger<ShellyCloudService> _logger;
+        private readonly IAsyncPolicy<HttpResponseMessage> _retryPolicy;
+        private readonly IShellyCloudMapper _mapper;
 
         public ShellyCloudService(
             IConfiguration config,
             IHttpClientFactory clientFactory,
             ShellyCloudDeviceStore store,
-            ILogger<ShellyCloudService> logger)
+            ILogger<ShellyCloudService> logger,
+            IShellyCloudMapper mapper)
         {
-            _httpClient = clientFactory.CreateClient("ShellyCloudClient");
-            _host = config["SHELLY_API_ENDPOINT"] ?? throw new InvalidOperationException("SHELLY_API_ENDPOINT key not provided");
-            _authKey = config["SHELLY_API_KEY"] ?? throw new InvalidOperationException("SHELLY_API_KEY key not provided");
+            _httpClient = clientFactory.CreateClient(ShellyServiceConstants.HttpClientName);
+            _host = config["SHELLY_API_ENDPOINT"]
+                ?? throw new InvalidOperationException(
+                    "Missing configuration: set the environment variable 'SHELLY_API_ENDPOINT'.");
+            _authKey = config["SHELLY_API_KEY"]
+                ?? throw new InvalidOperationException(
+                    "Missing configuration: set the environment variable 'SHELLY_API_KEY'.");
             _deviceStore = store;
             _logger = logger;
+            _retryPolicy = HttpPolicies.CreateResiliencePolicy(logger);
+            _mapper = mapper;
         }
 
         /// <summary>
@@ -68,12 +66,6 @@ namespace Giogdev.Shelly.Integrations.Services
         public IEnumerable<DeviceNameMappingStoreItem> GetKnownDevices()
         {
             return _deviceStore.Store;
-        }
-
-        [Obsolete("Use GetKnownDevices instead.")]
-        public IEnumerable<DeviceNameMappingStoreItem> GeKnownDevices()
-        {
-            return GetKnownDevices();
         }
 
         /// <summary>
@@ -108,15 +100,14 @@ namespace Giogdev.Shelly.Integrations.Services
                     //Map response (only if I found device in cloud response)
                     if (cloudDevice != null)
                     {
-                        if (!string.IsNullOrWhiteSpace(cloudDevice.Code) &&
-                            _deviceMappers.TryGetValue(cloudDevice.Code, out var mapper))
-                        {
-                            mappedDevices.Add(mapper(cloudDevice, requestedDevice.ChannelId));
-                        }
-                        else
-                        {
-                            mappedDevices.Add(ShellyCloudMapper.MapSwitchDevice(cloudDevice, requestedDevice.ChannelId));
-                        }
+                        // Resolution order:
+                        // 1. Code returned by Cloud API (most authoritative)
+                        // 2. DeviceType stored in local devices.json (allows custom types via config)
+                        var deviceCode = !string.IsNullOrWhiteSpace(cloudDevice.Code)
+                            ? cloudDevice.Code
+                            : requestedDevice.DeviceType;
+
+                        mappedDevices.Add(_mapper.Map(cloudDevice, requestedDevice.ChannelId, deviceCode ?? string.Empty));
                     }
                     
                 }
@@ -157,7 +148,7 @@ namespace Giogdev.Shelly.Integrations.Services
                 return;
             }
 
-            var storeItems = ShellyCloudMapper.MapDevicesToStoreItems(devices);
+            var storeItems = _mapper.MapDevicesToStoreItems(devices);
 
             _deviceStore.UpdateStore(storeItems);
             _logger.LogInformation("FetchAndPopulateDevicesAsync: populated store with {DeviceCount} device(s).", storeItems.Count);
@@ -171,9 +162,12 @@ namespace Giogdev.Shelly.Integrations.Services
         /// <exception cref="HttpRequestException"></exception>
         public async Task<string> ControlSwitchDevice(CloudDeviceSwitchRequest switchRequest)
         {
-            if (switchRequest.ToggleAfter <= 0) switchRequest.ToggleAfter = null;
+            // Normalise: non-positive delay is treated as "no auto-revert"
+            var effectiveRequest = switchRequest.ToggleAfter is <= 0
+                ? switchRequest with { ToggleAfter = null }
+                : switchRequest;
 
-            return await PostApiRawAsync("/v2/devices/api/set/switch", switchRequest);
+            return await PostApiRawAsync("/v2/devices/api/set/switch", effectiveRequest);
         }
 
         #region Private
@@ -196,7 +190,7 @@ namespace Giogdev.Shelly.Integrations.Services
             var content = _serializeAndPreparePayloadForHttpRequest(request);
             var url = $"https://{_host}{path}?auth_key={_authKey}";
 
-            var response = await HttpPolicies.standardRetryPolicy.ExecuteAsync(
+            var response = await _retryPolicy.ExecuteAsync(
                 async (context) => await _httpClient.PostAsync(url, content),
                 new Context());
 

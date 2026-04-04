@@ -9,10 +9,12 @@ services:
     environment:
       - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
       - SHELLY_API_KEY=${SHELLY_API_KEY}
-      - DeviceMappingFile=/app/devices.json # Optional, if you have a custom devices.json file to use
-      # Optional, if you have a custom devices.json file to use
+      # Optional: mount a custom devices.json to override auto-discovery.
+      - DeviceMappingFile=/app/devices.json
     volumes:
-      - '<your-path>\devices.json:/app/devices.json:ro'
+      # Set DEVICES_FILE_PATH to the local path of your devices.json (e.g. /home/user/devices.json).
+      # Defaults to /config/devices.json if not set.
+      - ${DEVICES_FILE_PATH:-/config/devices.json}:/app/devices.json:ro
     stdin_open: true
     tty: false
 
@@ -25,7 +27,9 @@ services:
     environment:
       - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
       - SHELLY_API_KEY=${SHELLY_API_KEY}
-      - DeviceMappingFile=/app/devices.json # Optional, if you have a custom devices.json file to use
-    # Optional, if you have a custom devices.json file to use
+      # Optional: mount a custom devices.json to override auto-discovery.
+      - DeviceMappingFile=/app/devices.json
     volumes:
-      - '<your-path>\devices.json:/app/devices.json:ro'
+      # Set DEVICES_FILE_PATH to the local path of your devices.json (e.g. /home/user/devices.json).
+      # Defaults to /config/devices.json if not set.
+      - ${DEVICES_FILE_PATH:-/config/devices.json}:/app/devices.json:ro

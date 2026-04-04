@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Shelly.Models.Cloud;
+using Shelly.Services;
+using Shelly.Services.Mapper;
 using Shelly.Services.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -42,10 +44,10 @@ builder.Logging.AddConsole(consoleLogOptions =>
 
 #region Dependency Injection
 
-builder.Services.AddHttpClient<ShellyCloudService>("PhoneProviderClient");
+builder.Services.AddHttpClient<ShellyCloudService>(ShellyServiceConstants.HttpClientName);
 builder.Services.AddSingleton<ShellyCloudDeviceStore>();
+builder.Services.AddSingleton<IShellyCloudMapper, ShellyCloudMapper>();
 builder.Services.AddSingleton<IShellyCloudService, ShellyCloudService>();
-
 
 builder.Services
     .AddMcpServer()

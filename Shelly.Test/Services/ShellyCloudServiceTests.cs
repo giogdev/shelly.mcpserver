@@ -2,11 +2,14 @@ using FluentAssertions;
 using Giogdev.Shelly.Integrations.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using Shelly.Models;
 using Shelly.Models.Cloud;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
 using Shelly.Models.Exceptions;
+using Shelly.Services.Mapper;
 using Shelly.Services.Services;
 using Shelly.Test.Helpers;
 using System.Net;
@@ -20,6 +23,8 @@ public class ShellyCloudServiceTests
     private readonly IHttpClientFactory _clientFactory;
     private readonly ShellyCloudDeviceStore _deviceStore;
     private readonly ILogger<ShellyCloudService> _logger;
+    private static readonly IShellyCloudMapper DefaultMappers =
+        new ShellyCloudMapper(NullLogger<ShellyCloudMapper>.Instance);
 
     public ShellyCloudServiceTests()
     {
@@ -36,11 +41,13 @@ public class ShellyCloudServiceTests
     private ShellyCloudService CreateService(FakeHttpMessageHandler handler)
     {
         var httpClient = new HttpClient(handler);
-        _clientFactory.CreateClient("ShellyCloudClient").Returns(httpClient);
-        return new ShellyCloudService(_config, _clientFactory, _deviceStore, _logger);
+        _clientFactory.CreateClient(Shelly.Services.ShellyServiceConstants.HttpClientName).Returns(httpClient);
+        var mapper = new ShellyCloudMapper(NullLogger<ShellyCloudMapper>.Instance);
+        return new ShellyCloudService(_config, _clientFactory, _deviceStore, _logger, mapper);
     }
 
-    private static FakeHttpMessageHandler CreateHandlerWithJsonResponse(string jsonContent, HttpStatusCode statusCode = HttpStatusCode.OK)
+    private static FakeHttpMessageHandler CreateHandlerWithJsonResponse(
+        string jsonContent, HttpStatusCode statusCode = HttpStatusCode.OK)
     {
         return new FakeHttpMessageHandler((request, cancellationToken) =>
         {
@@ -180,6 +187,159 @@ public class ShellyCloudServiceTests
 
     #endregion
 
+    #region ControlSwitchDevice
+
+    [Fact]
+    public async Task ControlSwitchDevice_SendsCorrectUrlAndPayload_TurnOn()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        string? capturedBody = null;
+        var handler = new FakeHttpMessageHandler(async (request, ct) =>
+        {
+            capturedRequest = request;
+            capturedBody = await request.Content!.ReadAsStringAsync(ct);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"isok\":true}", System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+        var service = CreateService(handler);
+
+        await service.ControlSwitchDevice(new CloudDeviceSwitchRequest
+        {
+            Id      = "device-abc",
+            Channel = 0,
+            On      = true
+        });
+
+        capturedRequest!.RequestUri!.ToString().Should().Contain("/v2/devices/api/set/switch");
+        capturedRequest.RequestUri.ToString().Should().Contain("auth_key=test-api-key");
+
+        capturedBody.Should().NotBeNullOrEmpty();
+        var payload = JsonDocument.Parse(capturedBody!).RootElement;
+        payload.GetProperty("id").GetString().Should().Be("device-abc");
+        payload.GetProperty("on").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ControlSwitchDevice_SendsCorrectPayload_TurnOff()
+    {
+        string? capturedBody = null;
+        var handler = new FakeHttpMessageHandler(async (request, ct) =>
+        {
+            capturedBody = await request.Content!.ReadAsStringAsync(ct);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+        var service = CreateService(handler);
+
+        await service.ControlSwitchDevice(new CloudDeviceSwitchRequest
+        {
+            Id      = "device-xyz",
+            Channel = 1,
+            On      = false
+        });
+
+        var payload = JsonDocument.Parse(capturedBody!).RootElement;
+        payload.GetProperty("on").GetBoolean().Should().BeFalse();
+        payload.GetProperty("channel").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ControlSwitchDevice_NegativeDelay_OmitsToggleAfterFromPayload()
+    {
+        string? capturedBody = null;
+        var handler = new FakeHttpMessageHandler(async (request, ct) =>
+        {
+            capturedBody = await request.Content!.ReadAsStringAsync(ct);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+        var service = CreateService(handler);
+
+        await service.ControlSwitchDevice(new CloudDeviceSwitchRequest
+        {
+            Id          = "device-abc",
+            On          = true,
+            ToggleAfter = -1
+        });
+
+        var payload = JsonDocument.Parse(capturedBody!).RootElement;
+        payload.TryGetProperty("toggle_after", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ControlSwitchDevice_PositiveDelay_IncludesToggleAfter()
+    {
+        string? capturedBody = null;
+        var handler = new FakeHttpMessageHandler(async (request, ct) =>
+        {
+            capturedBody = await request.Content!.ReadAsStringAsync(ct);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+        var service = CreateService(handler);
+
+        await service.ControlSwitchDevice(new CloudDeviceSwitchRequest
+        {
+            Id          = "device-abc",
+            On          = true,
+            ToggleAfter = 30
+        });
+
+        var payload = JsonDocument.Parse(capturedBody!).RootElement;
+        payload.GetProperty("toggle_after").GetInt32().Should().Be(30);
+    }
+
+    [Fact]
+    public async Task ControlSwitchDevice_HttpError_ThrowsHttpRequestException()
+    {
+        var handler = CreateHandlerWithJsonResponse("{\"error\":\"bad\"}", HttpStatusCode.InternalServerError);
+        var service = CreateService(handler);
+
+        var act = () => service.ControlSwitchDevice(new CloudDeviceSwitchRequest { Id = "x", On = true });
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    #endregion
+
+    #region Configuration errors
+
+    [Fact]
+    public void Constructor_MissingApiEndpoint_ThrowsWithExplicitMessage()
+    {
+        var config = Substitute.For<IConfiguration>();
+        config["SHELLY_API_ENDPOINT"].Returns((string?)null);
+        config["SHELLY_API_KEY"].Returns("key");
+
+        var act = () => new ShellyCloudService(config, _clientFactory, _deviceStore, _logger, DefaultMappers);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*SHELLY_API_ENDPOINT*");
+    }
+
+    [Fact]
+    public void Constructor_MissingApiKey_ThrowsWithExplicitMessage()
+    {
+        var config = Substitute.For<IConfiguration>();
+        config["SHELLY_API_ENDPOINT"].Returns("shelly-00-eu.shelly.cloud");
+        config["SHELLY_API_KEY"].Returns((string?)null);
+
+        var act = () => new ShellyCloudService(config, _clientFactory, _deviceStore, _logger, DefaultMappers);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*SHELLY_API_KEY*");
+    }
+
+    #endregion
+
     #region GetWeatherStationStatisticsAsync
 
     [Fact]
@@ -193,7 +353,7 @@ public class ShellyCloudServiceTests
         {
             DeviceId = "ws-123",
             DateFrom = new DateTime(2026, 3, 30, 6, 0, 0, DateTimeKind.Utc),
-            DateTo = new DateTime(2026, 3, 30, 6, 46, 0, DateTimeKind.Utc)
+            DateTo   = new DateTime(2026, 3, 30, 6, 46, 0, DateTimeKind.Utc)
         };
 
         var result = await service.GetWeatherStationStatisticsAsync(request);
@@ -229,7 +389,7 @@ public class ShellyCloudServiceTests
         {
             DeviceId = "weather-device-42",
             DateFrom = new DateTime(2026, 3, 30, 6, 0, 0, DateTimeKind.Utc),
-            DateTo = new DateTime(2026, 3, 30, 6, 46, 0, DateTimeKind.Utc)
+            DateTo   = new DateTime(2026, 3, 30, 6, 46, 0, DateTimeKind.Utc)
         };
 
         await service.GetWeatherStationStatisticsAsync(request);
@@ -266,7 +426,7 @@ public class ShellyCloudServiceTests
         {
             DeviceId = "missing-device",
             DateFrom = new DateTime(2026, 3, 30, 6, 0, 0, DateTimeKind.Utc),
-            DateTo = new DateTime(2026, 3, 30, 6, 46, 0, DateTimeKind.Utc)
+            DateTo   = new DateTime(2026, 3, 30, 6, 46, 0, DateTimeKind.Utc)
         };
 
         var act = () => service.GetWeatherStationStatisticsAsync(request);
@@ -286,7 +446,7 @@ public class ShellyCloudServiceTests
         {
             DeviceId = "ws-123",
             DateFrom = new DateTime(2026, 3, 30, 6, 0, 0, DateTimeKind.Utc),
-            DateTo = new DateTime(2026, 3, 30, 6, 46, 0, DateTimeKind.Utc)
+            DateTo   = new DateTime(2026, 3, 30, 6, 46, 0, DateTimeKind.Utc)
         };
 
         var act = () => service.GetWeatherStationStatisticsAsync(request);
@@ -296,199 +456,204 @@ public class ShellyCloudServiceTests
 
     #endregion
 
-        #region GetDeviceStateAsync
+    #region GetDeviceStateAsync
 
-        [Fact]
-        public async Task GetDeviceStateAsync_SendsCorrectUrlAndPayload()
+    [Fact]
+    public async Task GetDeviceStateAsync_SendsCorrectUrlAndPayload()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        string? capturedBody = null;
+        var handler = new FakeHttpMessageHandler(async (request, ct) =>
         {
-                HttpRequestMessage? capturedRequest = null;
-                string? capturedBody = null;
-                var handler = new FakeHttpMessageHandler(async (request, ct) =>
-                {
-                        capturedRequest = request;
-                        capturedBody = await request.Content!.ReadAsStringAsync(ct);
-                        return new HttpResponseMessage(HttpStatusCode.OK)
-                        {
-                                Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
-                        };
-                });
-                var service = CreateService(handler);
+            capturedRequest = request;
+            capturedBody = await request.Content!.ReadAsStringAsync(ct);
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("[]", System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+        var service = CreateService(handler);
 
-                var devices = new[]
-                {
-                        new DeviceNameMappingStoreItem { DeviceId = "dev-1", ChannelId = 0 },
-                        new DeviceNameMappingStoreItem { DeviceId = "dev-2", ChannelId = 1 }
-                };
-
-                await service.GetDeviceStateAsync(devices);
-
-                capturedRequest.Should().NotBeNull();
-                capturedRequest!.RequestUri!.ToString().Should().Contain("/v2/devices/api/get");
-                capturedRequest.RequestUri.ToString().Should().Contain("auth_key=test-api-key");
-
-                capturedBody.Should().NotBeNullOrEmpty();
-                var payload = JsonDocument.Parse(capturedBody!);
-                var root = payload.RootElement;
-                root.GetProperty("ids").EnumerateArray().Select(e => e.GetString())
-                        .Should().ContainInOrder("dev-1_0", "dev-2_1");
-                root.GetProperty("select").EnumerateArray().Select(e => e.GetString())
-                        .Should().ContainSingle().Which.Should().Be("status");
-        }
-
-        [Fact]
-        public async Task GetDeviceStateAsync_RelayDevice_MapsRelayStatus()
+        var devices = new[]
         {
-                var responseJson = """
-                [
-                    {
-                        "id": "relay-1",
-                        "code": "SHSW-1",
-                        "status": {
-                            "relays": [
-                                { "ison": true }
-                            ]
-                        }
-                    }
-                ]
-                """;
-                var handler = CreateHandlerWithJsonResponse(responseJson);
-                var service = CreateService(handler);
+            new DeviceNameMappingStoreItem { DeviceId = "dev-1", ChannelId = 0 },
+            new DeviceNameMappingStoreItem { DeviceId = "dev-2", ChannelId = 1 }
+        };
 
-                var devices = new[]
-                {
-                        new DeviceNameMappingStoreItem { DeviceId = "relay-1", ChannelId = 0 }
-                };
+        await service.GetDeviceStateAsync(devices);
 
-                var result = (await service.GetDeviceStateAsync(devices)).ToList();
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.RequestUri!.ToString().Should().Contain("/v2/devices/api/get");
+        capturedRequest.RequestUri.ToString().Should().Contain("auth_key=test-api-key");
 
-                result.Should().HaveCount(1);
-                result[0].Status.Should().Be("TURNED_ON");
-                result[0].IsSuccess.Should().BeTrue();
-        }
+        capturedBody.Should().NotBeNullOrEmpty();
+        var payload = JsonDocument.Parse(capturedBody!);
+        var root = payload.RootElement;
+        root.GetProperty("ids").EnumerateArray().Select(e => e.GetString())
+            .Should().ContainInOrder("dev-1_0", "dev-2_1");
+        root.GetProperty("select").EnumerateArray().Select(e => e.GetString())
+            .Should().ContainSingle().Which.Should().Be("status");
+    }
 
-        [Fact]
-        public async Task GetDeviceStateAsync_SwitchDeviceChannel1_UsesSwitch1Values()
-        {
-                var responseJson = """
-                [
-                    {
-                        "id": "switch-2pm",
-                        "code": "SNSW-102P16EU",
-                        "status": {
-                            "switch:0": { "output": false, "apower": 10.5 },
-                            "switch:1": { "output": true, "apower": 222.7 }
-                        }
-                    }
-                ]
-                """;
-                var handler = CreateHandlerWithJsonResponse(responseJson);
-                var service = CreateService(handler);
+    [Fact]
+    public async Task GetDeviceStateAsync_RelayDevice_MapsRelayStatus()
+    {
+        var responseJson = """
+        [
+            {
+                "id": "relay-1",
+                "code": "SHSW-1",
+                "status": {
+                    "relays": [
+                        { "ison": true }
+                    ]
+                }
+            }
+        ]
+        """;
+        var handler = CreateHandlerWithJsonResponse(responseJson);
+        var service = CreateService(handler);
 
-                var devices = new[]
-                {
-                        new DeviceNameMappingStoreItem { DeviceId = "switch-2pm", ChannelId = 1 }
-                };
+        var devices = new[] { new DeviceNameMappingStoreItem { DeviceId = "relay-1", ChannelId = 0 } };
 
-                var result = (await service.GetDeviceStateAsync(devices)).ToList();
+        var result = (await service.GetDeviceStateAsync(devices)).ToList();
 
-                result.Should().HaveCount(1);
-                result[0].Status.Should().Be("TURNED_ON");
-                result[0].Watt.Should().Be(222.7);
-        }
+        result.Should().HaveCount(1);
+        result[0].Status.Should().Be(ShellyConstants.DeviceStatus.On);
+        result[0].IsSuccess.Should().BeTrue();
+    }
 
-        [Fact]
-        public async Task GetDeviceStateAsync_DoorWindowDevice_UsesDoorWindowMapping()
-        {
-                var responseJson = """
-                [
-                    {
-                        "id": "door-1",
-                        "code": "SHDW-2",
-                        "status": {
-                            "sensor": { "state": "open" },
-                            "bat": { "value": 91 },
-                            "tmp": { "value": 18.2 },
-                            "lux": { "value": 450 }
-                        }
-                    }
-                ]
-                """;
-                var handler = CreateHandlerWithJsonResponse(responseJson);
-                var service = CreateService(handler);
+    [Fact]
+    public async Task GetDeviceStateAsync_SwitchDeviceChannel1_UsesSwitch1Values()
+    {
+        var responseJson = """
+        [
+            {
+                "id": "switch-2pm",
+                "code": "SNSW-102P16EU",
+                "status": {
+                    "switch:0": { "output": false, "apower": 10.5 },
+                    "switch:1": { "output": true, "apower": 222.7 }
+                }
+            }
+        ]
+        """;
+        var handler = CreateHandlerWithJsonResponse(responseJson);
+        var service = CreateService(handler);
 
-                var devices = new[]
-                {
-                        new DeviceNameMappingStoreItem { DeviceId = "door-1", ChannelId = 0 }
-                };
+        var devices = new[] { new DeviceNameMappingStoreItem { DeviceId = "switch-2pm", ChannelId = 1 } };
 
-                var result = (await service.GetDeviceStateAsync(devices)).ToList();
+        var result = (await service.GetDeviceStateAsync(devices)).ToList();
 
-                result.Should().HaveCount(1);
-                result[0].Status.Should().Be("open");
-                result[0].BatteryPercentage.Should().Be(91);
-                result[0].Temperature.Should().Be(18.2);
-                result[0].Lux.Should().Be(450);
-        }
+        result.Should().HaveCount(1);
+        result[0].Status.Should().Be(ShellyConstants.DeviceStatus.On);
+        result[0].Watt.Should().Be(222.7);
+    }
 
-        [Fact]
-        public async Task GetDeviceStateAsync_DeviceNotFoundInApiResponse_ReturnsEmptyCollection()
-        {
-                var responseJson = """
-                [
-                    {
-                        "id": "other-device",
-                        "code": "SHSW-1",
-                        "status": {
-                            "relays": [
-                                { "ison": true }
-                            ]
-                        }
-                    }
-                ]
-                """;
-                var handler = CreateHandlerWithJsonResponse(responseJson);
-                var service = CreateService(handler);
+    [Fact]
+    public async Task GetDeviceStateAsync_DoorWindowDevice_UsesDoorWindowMapping()
+    {
+        var responseJson = """
+        [
+            {
+                "id": "door-1",
+                "code": "SHDW-2",
+                "status": {
+                    "sensor": { "state": "open" },
+                    "bat": { "value": 91 },
+                    "tmp": { "value": 18.2 },
+                    "lux": { "value": 450 }
+                }
+            }
+        ]
+        """;
+        var handler = CreateHandlerWithJsonResponse(responseJson);
+        var service = CreateService(handler);
 
-                var devices = new[]
-                {
-                        new DeviceNameMappingStoreItem { DeviceId = "requested-device", ChannelId = 0 }
-                };
+        var devices = new[] { new DeviceNameMappingStoreItem { DeviceId = "door-1", ChannelId = 0 } };
 
-                var result = (await service.GetDeviceStateAsync(devices)).ToList();
+        var result = (await service.GetDeviceStateAsync(devices)).ToList();
 
-                result.Should().BeEmpty();
-        }
+        result.Should().HaveCount(1);
+        result[0].Status.Should().Be("open");
+        result[0].BatteryPercentage.Should().Be(91);
+        result[0].Temperature.Should().Be(18.2);
+        result[0].Lux.Should().Be(450);
+    }
 
-        [Fact]
-        public async Task GetDeviceStateAsync_StatusMacAsNumber_DoesNotThrowAndMapsRelay()
-        {
-                var responseJson = """
-                [
-                    {
-                        "id": "relay-1",
-                        "code": "SHSW-1",
-                        "status": {
-                            "mac": 1,
-                            "relays": [
-                                { "ison": true }
-                            ]
-                        }
-                    }
-                ]
-                """;
-                var handler = CreateHandlerWithJsonResponse(responseJson);
-                var service = CreateService(handler);
+    [Fact]
+    public async Task GetDeviceStateAsync_UnknownDeviceCode_UsesFallbackSwitchMapper()
+    {
+        var responseJson = """
+        [
+            {
+                "id": "unknown-1",
+                "code": "UNKNOWN-CODE-XYZ",
+                "status": {
+                    "switch:0": { "output": true, "apower": 55.0 }
+                }
+            }
+        ]
+        """;
+        var handler = CreateHandlerWithJsonResponse(responseJson);
+        var service = CreateService(handler);
 
-                var devices = new[]
-                {
-                        new DeviceNameMappingStoreItem { DeviceId = "relay-1", ChannelId = 0 }
-                };
+        var devices = new[] { new DeviceNameMappingStoreItem { DeviceId = "unknown-1", ChannelId = 0 } };
 
-                var result = (await service.GetDeviceStateAsync(devices)).ToList();
+        var result = (await service.GetDeviceStateAsync(devices)).ToList();
 
-                result.Should().HaveCount(1);
-                result[0].Status.Should().Be("TURNED_ON");
-        }
+        result.Should().HaveCount(1);
+        result[0].Status.Should().Be(ShellyConstants.DeviceStatus.On);
+        result[0].IsSuccess.Should().BeTrue();
+    }
 
-        #endregion
+    [Fact]
+    public async Task GetDeviceStateAsync_DeviceNotFoundInApiResponse_ReturnsEmptyCollection()
+    {
+        var responseJson = """
+        [
+            {
+                "id": "other-device",
+                "code": "SHSW-1",
+                "status": { "relays": [ { "ison": true } ] }
+            }
+        ]
+        """;
+        var handler = CreateHandlerWithJsonResponse(responseJson);
+        var service = CreateService(handler);
+
+        var devices = new[] { new DeviceNameMappingStoreItem { DeviceId = "requested-device", ChannelId = 0 } };
+
+        var result = (await service.GetDeviceStateAsync(devices)).ToList();
+
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetDeviceStateAsync_StatusMacAsNumber_DoesNotThrowAndMapsRelay()
+    {
+        var responseJson = """
+        [
+            {
+                "id": "relay-1",
+                "code": "SHSW-1",
+                "status": {
+                    "mac": 1,
+                    "relays": [ { "ison": true } ]
+                }
+            }
+        ]
+        """;
+        var handler = CreateHandlerWithJsonResponse(responseJson);
+        var service = CreateService(handler);
+
+        var devices = new[] { new DeviceNameMappingStoreItem { DeviceId = "relay-1", ChannelId = 0 } };
+
+        var result = (await service.GetDeviceStateAsync(devices)).ToList();
+
+        result.Should().HaveCount(1);
+        result[0].Status.Should().Be(ShellyConstants.DeviceStatus.On);
+    }
+
+    #endregion
 }

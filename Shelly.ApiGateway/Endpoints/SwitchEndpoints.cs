@@ -18,37 +18,34 @@ public static class SwitchEndpoints
 
         // Sends an ON/OFF command to the device identified by device ID.
         // Optional delaySeconds causes the device to revert after that many seconds.
-        group.MapPost("/{deviceId}/switch", async Task<Results<Ok<DefaultResponse>, NotFound<ApiErrorResponse>, ProblemHttpResult>> (
+        group.MapPost("/{deviceId}/switch", async Task<Results<Ok<DefaultResponse>, NotFound<ApiErrorResponse>, BadRequest<ApiErrorResponse>>> (
             string deviceId,
             SwitchRequest body,
             IShellyCloudService shellyService) =>
         {
+            if (string.IsNullOrWhiteSpace(deviceId))
+                return TypedResults.BadRequest(new ApiErrorResponse("The 'deviceId' parameter cannot be empty."));
+
+            if (body.DelaySeconds.HasValue && body.DelaySeconds.Value <= 0)
+                return TypedResults.BadRequest(new ApiErrorResponse("'delaySeconds' must be a positive value if provided."));
+
             DeviceNameMappingStoreItem? device = shellyService.GetKnownDevices()
                 .FirstOrDefault(d => d.DeviceId == deviceId);
+
             if (device is null)
                 return TypedResults.NotFound(new ApiErrorResponse($"No device found with id '{deviceId}'."));
 
-            try
+            var switchRequest = new CloudDeviceSwitchRequest
             {
-                var switchRequest = new CloudDeviceSwitchRequest
-                {
-                    Id = device.DeviceId,
-                    Channel = device.ChannelId,
-                    On = body.On,
-                    // A null or zero delay is ignored by the service layer.
-                    ToggleAfter = body.DelaySeconds > 0 ? body.DelaySeconds : null
-                };
+                Id = device.DeviceId,
+                Channel = device.ChannelId ,
+                On = body.On,
+                ToggleAfter = body.DelaySeconds > 0 ? body.DelaySeconds : null
+            };
 
-                await shellyService.ControlSwitchDevice(switchRequest);
+            await shellyService.ControlSwitchDevice(switchRequest);
 
-                return TypedResults.Ok(new DefaultResponse { IsSuccess = true });
-            }
-            catch (Exception ex)
-            {
-                return TypedResults.Problem(
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status500InternalServerError);
-            }
+            return TypedResults.Ok(new DefaultResponse { IsSuccess = true });
         })
         .WithName("SwitchDevice")
         .WithSummary("Turn a Shelly switch device on or off");
