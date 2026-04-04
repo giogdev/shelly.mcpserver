@@ -34,6 +34,19 @@ builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();
 
 // ──────────────────────────────────────────────
+// Exception handling
+// ──────────────────────────────────────────────
+
+// Exceptions managed in this middleware
+builder.Services.AddExceptionHandler<ShellyExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+// ──────────────────────────────────────────────
+// Health checks
+// ──────────────────────────────────────────────
+builder.Services.AddHealthChecks();
+
+// ──────────────────────────────────────────────
 // OpenAPI
 // ──────────────────────────────────────────────
 builder.Services.AddOpenApi();
