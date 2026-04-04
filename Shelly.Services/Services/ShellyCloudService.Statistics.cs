@@ -2,7 +2,6 @@ using Polly;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
 using Shelly.Models.Exceptions;
-using Shelly.Services.Utils;
 using System.Text.Json;
 
 namespace Giogdev.Shelly.Integrations.Services
@@ -52,7 +51,7 @@ namespace Giogdev.Shelly.Integrations.Services
                       $"&date_from={Uri.EscapeDataString(dateFrom)}&date_to={Uri.EscapeDataString(dateTo)}" +
                       $"&auth_key={_authKey}";
 
-            using var response = await HttpPolicies.standardRetryPolicy.ExecuteAsync(
+            using var response = await _retryPolicy.ExecuteAsync(
                 async (context) => await _httpClient.GetAsync(url), new Context());
 
             // Read body once; both error inspection and deserialization consume it from the same string.
@@ -94,7 +93,7 @@ namespace Giogdev.Shelly.Integrations.Services
                       $"&date_from={Uri.EscapeDataString(dateFrom)}&date_to={Uri.EscapeDataString(dateTo)}" +
                       $"&auth_key={_authKey}";
 
-            using var response = await HttpPolicies.standardRetryPolicy.ExecuteAsync(
+            using var response = await _retryPolicy.ExecuteAsync(
                 async (context) => await _httpClient.GetAsync(url), new Context());
 
             var body = await response.Content.ReadAsStringAsync();

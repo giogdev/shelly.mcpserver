@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Giogdev.Shelly.Integrations.Models.Shelly;
+using Microsoft.Extensions.Logging.Abstractions;
 using Shelly.Models.Cloud;
 using Shelly.Models.Cloud.Response;
 using Shelly.Services.Mapper;
@@ -10,6 +11,8 @@ namespace Shelly.Test.Mapper;
 
 public class ShellyCloudMapperTests
 {
+    private readonly ShellyCloudMapper _mapper = new(NullLogger<ShellyCloudMapper>.Instance);
+
     #region MapSwitchDevice
 
     [Fact]
@@ -23,7 +26,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapSwitchDevice(device, channel: 0);
+        var result = _mapper.MapSwitchDevice(device, channel: 0);
 
         result.Status.Should().Be("TURNED_ON");
         result.IsSuccess.Should().BeTrue();
@@ -40,7 +43,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapSwitchDevice(device, channel: 0);
+        var result = _mapper.MapSwitchDevice(device, channel: 0);
 
         result.Status.Should().Be("TURNED_OFF");
     }
@@ -56,7 +59,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapSwitchDevice(device, channel: 0);
+        var result = _mapper.MapSwitchDevice(device, channel: 0);
 
         result.Watt.Should().Be(123.4);
     }
@@ -72,7 +75,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapSwitchDevice(device, channel: 1);
+        var result = _mapper.MapSwitchDevice(device, channel: 1);
 
         result.Status.Should().Be("TURNED_ON");
     }
@@ -88,7 +91,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapSwitchDevice(device, channel: 1);
+        var result = _mapper.MapSwitchDevice(device, channel: 1);
 
         result.Status.Should().Be("TURNED_OFF");
     }
@@ -105,7 +108,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapSwitchDevice(device, channel: 1);
+        var result = _mapper.MapSwitchDevice(device, channel: 1);
 
         result.Watt.Should().Be(200.0);
     }
@@ -115,7 +118,7 @@ public class ShellyCloudMapperTests
     {
         var device = new CloudDeviceResponseModel { Status = null };
 
-        var result = ShellyCloudMapper.MapSwitchDevice(device, channel: 0);
+        var result = _mapper.MapSwitchDevice(device, channel: 0);
 
         result.Status.Should().Be("TURNED_OFF");
         result.Watt.Should().Be(-1);
@@ -137,7 +140,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapRelayDevice(device);
+        var result = _mapper.MapRelayDevice(device);
 
         result.Status.Should().Be("TURNED_ON");
         result.IsSuccess.Should().BeTrue();
@@ -154,7 +157,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapRelayDevice(device);
+        var result = _mapper.MapRelayDevice(device);
 
         result.Status.Should().Be("TURNED_OFF");
     }
@@ -167,7 +170,7 @@ public class ShellyCloudMapperTests
             Status = new CloudDeviceStatus { Relays = null }
         };
 
-        var result = ShellyCloudMapper.MapRelayDevice(device);
+        var result = _mapper.MapRelayDevice(device);
 
         result.Status.Should().Be("TURNED_OFF");
     }
@@ -190,7 +193,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDoorWindowGen1Device(device);
+        var result = _mapper.MapDoorWindowGen1Device(device);
 
         result.IsSuccess.Should().BeTrue();
         result.Status.Should().Be("open");
@@ -213,7 +216,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDoorWindowGen1Device(device);
+        var result = _mapper.MapDoorWindowGen1Device(device);
 
         result.Status.Should().Be("unknown");
     }
@@ -232,7 +235,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDoorWindowGen1Device(device);
+        var result = _mapper.MapDoorWindowGen1Device(device);
 
         result.BatteryPercentage.Should().Be(-1);
     }
@@ -251,7 +254,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDoorWindowGen1Device(device);
+        var result = _mapper.MapDoorWindowGen1Device(device);
 
         result.Temperature.Should().Be(-1);
     }
@@ -270,7 +273,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDoorWindowGen1Device(device);
+        var result = _mapper.MapDoorWindowGen1Device(device);
 
         result.Lux.Should().Be(-1);
     }
@@ -292,7 +295,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().HaveCount(1);
         result[0].DeviceId.Should().Be("dev001");
@@ -317,7 +320,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().HaveCount(1);
         result[0].FriendlyNames.Should().Contain("shellyswitch");
@@ -336,7 +339,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().HaveCount(1);
         result[0].FriendlyNames.Should().Contain("SHSW-1");
@@ -359,7 +362,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().HaveCount(2);
         result[0].DeviceId.Should().Be("dev004");
@@ -386,7 +389,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().HaveCount(1);
         result[0].FriendlyNames.Should().Contain("Automation Script");
@@ -409,7 +412,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().HaveCount(1);
         result[0].ChannelId.Should().Be(0);
@@ -428,7 +431,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().BeEmpty();
     }
@@ -438,7 +441,7 @@ public class ShellyCloudMapperTests
     {
         var model = new GetDevicesResponseModel();
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().BeEmpty();
     }
@@ -456,7 +459,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result[0].DeviceType.Should().Be("relay");
     }
@@ -474,7 +477,7 @@ public class ShellyCloudMapperTests
         item.Type = null!;
         var model = new GetDevicesResponseModel { item };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result[0].DeviceType.Should().Be("SHSW-1");
     }
@@ -496,7 +499,7 @@ public class ShellyCloudMapperTests
             }
         };
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(model);
+        var result = _mapper.MapDevicesToStoreItems(model);
 
         result.Should().HaveCount(1);
         result[0].FriendlyNames.Should().NotContain("");
@@ -512,7 +515,7 @@ public class ShellyCloudMapperTests
             PropertyNameCaseInsensitive = true
         })!;
 
-        var result = ShellyCloudMapper.MapDevicesToStoreItems(devices);
+        var result = _mapper.MapDevicesToStoreItems(devices);
 
         // The example JSON has 34 devices. Each device produces at least 1 store item,
         // multi-channel G2 devices produce more. Verify we get a reasonable count.

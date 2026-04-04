@@ -1,25 +1,16 @@
-using System;
+namespace Shelly.Models.Cloud.Request;
 
-namespace Shelly.Models.Cloud.Request
+/// <summary>
+/// Request parameters for retrieving weather station historical statistics.
+/// </summary>
+public record WeatherStationStatisticsRequest
 {
-    /// <summary>
-    /// Request parameters for retrieving weather station historical statistics.
-    /// </summary>
-    public class WeatherStationStatisticsRequest
-    {
-        /// <summary>
-        /// The Shelly device identifier.
-        /// </summary>
-        public string DeviceId { get; set; } = string.Empty;
+    /// <summary>The Shelly device identifier.</summary>
+    public string DeviceId { get; init; } = string.Empty;
 
-        /// <summary>
-        /// Start of the date range (inclusive).
-        /// </summary>
-        public DateTime DateFrom { get; set; }
+    /// <summary>Start of the date range (inclusive).</summary>
+    public DateTime DateFrom { get; init; }
 
-        /// <summary>
-        /// End of the date range (inclusive).
-        /// </summary>
-        public DateTime DateTo { get; set; }
-    }
+    /// <summary>End of the date range (inclusive).</summary>
+    public DateTime DateTo { get; init; }
 }

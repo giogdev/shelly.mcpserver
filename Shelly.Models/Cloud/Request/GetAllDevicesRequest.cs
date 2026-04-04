@@ -1,13 +1,12 @@
 using System.Text.Json.Serialization;
 
-namespace Shelly.Models.Cloud.Request
-{
-    public class GetAllDevicesRequest
-    {
-        [JsonPropertyName("select")]
-        public string[] Select { get; set; } = Array.Empty<string>();
+namespace Shelly.Models.Cloud.Request;
 
-        [JsonPropertyName("show")]
-        public string[] Show { get; set; } = Array.Empty<string>();
-    }
+public record GetAllDevicesRequest
+{
+    [JsonPropertyName("select")]
+    public string[] Select { get; init; } = [];
+
+    [JsonPropertyName("show")]
+    public string[] Show { get; init; } = [];
 }

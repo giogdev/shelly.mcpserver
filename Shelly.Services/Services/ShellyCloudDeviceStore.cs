@@ -1,11 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Shelly.Models.Cloud;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace Shelly.Services.Services
 {
@@ -13,33 +8,67 @@ namespace Shelly.Services.Services
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+        // ReaderWriterLockSlim: many concurrent reads, rare writes (only at startup / refresh).
+        private readonly ReaderWriterLockSlim _lock = new();
         private List<DeviceNameMappingStoreItem> _store = LoadFromConfiguration(configuration);
-        public IEnumerable<DeviceNameMappingStoreItem> Store => _store;
 
-        public void UpdateStore(IEnumerable<DeviceNameMappingStoreItem> devices)
+        public IEnumerable<DeviceNameMappingStoreItem> Store
         {
-            foreach (var device in devices)
+            get
             {
-                var existing = _store.FirstOrDefault(s => s.DeviceId == device.DeviceId);
-                if (existing != null)
+                _lock.EnterReadLock();
+                try
                 {
-                    existing.FriendlyNames = [.. (existing.FriendlyNames ?? []).Union(device.FriendlyNames ?? [])];
-                    existing.ChannelId = device.ChannelId;
-                    existing.DeviceType = device.DeviceType;
+                    return [.. _store];
                 }
-                else
+                finally
                 {
-                    _store.Add(device);
+                    _lock.ExitReadLock();
                 }
             }
         }
 
-        /// <summary>
-        /// Reset and re-initialize devices store
-        /// </summary>
+        public void UpdateStore(IEnumerable<DeviceNameMappingStoreItem> devices)
+        {
+            _lock.EnterWriteLock();
+            try
+            {
+                foreach (var device in devices)
+                {
+                    // Match on both DeviceId AND ChannelId: multi-channel devices (e.g. Plus 2PM)
+                    // produce one store item per channel and must not be merged together.
+                    var existing = _store.FirstOrDefault(
+                        s => s.DeviceId == device.DeviceId && s.ChannelId == device.ChannelId);
+                    if (existing != null)
+                    {
+                        existing.FriendlyNames = [.. (existing.FriendlyNames ?? []).Union(device.FriendlyNames ?? [])];
+                        existing.DeviceType    = device.DeviceType;
+                    }
+                    else
+                    {
+                        _store.Add(device);
+                    }
+                }
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
+        }
+
+        /// <summary>Reset and re-initialize the device store from configuration.</summary>
         public void ReinitializeDeviceStore()
         {
-            _store = LoadFromConfiguration(configuration);
+            var fresh = LoadFromConfiguration(configuration);
+            _lock.EnterWriteLock();
+            try
+            {
+                _store = fresh;
+            }
+            finally
+            {
+                _lock.ExitWriteLock();
+            }
         }
 
         private static List<DeviceNameMappingStoreItem> LoadFromConfiguration(IConfiguration configuration)
@@ -47,13 +76,10 @@ namespace Shelly.Services.Services
             var mappingFile = configuration["DeviceMappingFile"];
 
             if (string.IsNullOrEmpty(mappingFile) || !File.Exists(mappingFile))
-            {
                 return [];
-            }
 
             var json = File.ReadAllText(mappingFile);
             return JsonSerializer.Deserialize<List<DeviceNameMappingStoreItem>>(json, JsonOptions) ?? [];
         }
     }
 }
-

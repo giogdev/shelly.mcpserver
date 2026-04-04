@@ -16,19 +16,10 @@ public static class DeviceEndpoints
             .WithTags("Devices");
 
         // Returns the full list of known devices from the local store (no cloud call).
-        group.MapGet("/", Results<Ok<IEnumerable<DeviceNameMappingStoreItem>>, ProblemHttpResult> (IShellyCloudService shellyService) =>
+        group.MapGet("/", (IShellyCloudService shellyService) =>
         {
-            try
-            {
-                IEnumerable<DeviceNameMappingStoreItem> devices = shellyService.GetKnownDevices();
-                return TypedResults.Ok(devices);
-            }
-            catch (Exception ex)
-            {
-                return TypedResults.Problem(
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status500InternalServerError);
-            }
+            IEnumerable<DeviceNameMappingStoreItem> devices = shellyService.GetKnownDevices();
+            return TypedResults.Ok(devices);
         })
         .WithName("GetDevices")
         .WithSummary("Get all known Shelly devices");
@@ -38,29 +29,26 @@ public static class DeviceEndpoints
             string deviceId,
             IShellyCloudService shellyService) =>
         {
+            if (string.IsNullOrWhiteSpace(deviceId))
+                return TypedResults.Problem(
+                    detail: "The 'deviceId' parameter cannot be empty.",
+                    statusCode: StatusCodes.Status400BadRequest);
+
             DeviceNameMappingStoreItem? device = shellyService.GetKnownDevices()
                 .FirstOrDefault(d => d.DeviceId == deviceId);
+
             if (device is null)
                 return TypedResults.NotFound(new ApiErrorResponse($"No device found with id '{deviceId}'."));
 
-            try
-            {
-                GenericDeviceStatusModel? status = await shellyService.GetSingleDeviceStateAsync(device);
+            GenericDeviceStatusModel? status = await shellyService.GetSingleDeviceStateAsync(device);
 
-                // Service returns null only when the upstream response is empty.
-                if (status is null)
-                    return TypedResults.Problem(
-                        detail: "Shelly Cloud returned no data for the requested device.",
-                        statusCode: StatusCodes.Status502BadGateway);
-
-                return TypedResults.Ok(status);
-            }
-            catch (Exception ex)
-            {
+            // Service returns null only when the upstream response is empty.
+            if (status is null)
                 return TypedResults.Problem(
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status500InternalServerError);
-            }
+                    detail: "Shelly Cloud returned no data for the requested device.",
+                    statusCode: StatusCodes.Status502BadGateway);
+
+            return TypedResults.Ok(status);
         })
         .WithName("GetDeviceStatus")
         .WithSummary("Get live status of a Shelly device by device ID");

@@ -5,7 +5,8 @@
       "Bash(npm ls:*)",
       "Bash(npx --yes ajv-cli validate -s docs/schemas/api-v2-devices-get.schema.json -d docs/response-examples/v2-devices-get.example.json)",
       "Bash(npx --yes ajv-cli -c ajv-formats -s docs/schemas/api-v2-devices-get.schema.json -d docs/response-examples/v2-devices-get.example.json --spec=draft2020)",
-      "Bash(npx --yes ajv-cli@5 validate -s docs/schemas/api-v2-devices-get.schema.json -d docs/response-examples/v2-devices-get.example.json --spec=draft2020)"
+      "Bash(npx --yes ajv-cli@5 validate -s docs/schemas/api-v2-devices-get.schema.json -d docs/response-examples/v2-devices-get.example.json --spec=draft2020)",
+      "Bash(dotnet test:*)"
     ]
   }
 }

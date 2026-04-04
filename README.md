@@ -43,10 +43,14 @@ You can find these projects on docker hub and docker-compose in docker directory
 - [REST API Gateway](docs/rest-api.md) — available endpoints, Docker setup, how to enable or disable the service
 - [Device Loading & Store Initialization](docs/device-loading.md) — how the device store is initialized at startup, loading priorities, and merge logic between the local file and the Shelly Cloud API
 
+## Security
+
+This project doesn't implement security tokens or auth because it's designed to run into a protected environment and not exposed to external world.
 
 ### Device mapping file
 
 [`docs/resources/template/devices.template.json`](docs/resources/template/devices.template.json) is the JSON template to define your devices locally. It maps physical device IDs to friendly names used by the MCP tools and REST endpoints. Copy and fill it in to use a local mapping file (see `DeviceMappingFile` configuration key).
+
 
 
 ## Changelog
