@@ -34,6 +34,9 @@ namespace Shelly.McpServer.Tools
                 if (storeDevice == null)
                     return new GenericDeviceStatusModel { IsSuccess = false, Error = "There isn't any device with this name, try another name" };
 
+                if (!storeDevice.IsOnline)
+                    return new GenericDeviceStatusModel { IsSuccess = false, Error = $"Device '{deviceName}' is currently offline." };
+
                 GenericDeviceStatusModel? deviceState = await _shellyCloudService.GetSingleDeviceStateAsync(storeDevice);
 
                 return deviceState ?? new GenericDeviceStatusModel
@@ -79,6 +82,9 @@ namespace Shelly.McpServer.Tools
                 if (storeDevice == null)
                     return new DefaultResponse { IsSuccess = false, Error = "There isn't any device with this name, try another name" };
 
+                if (!storeDevice.IsOnline)
+                    return new DefaultResponse { IsSuccess = false, Error = $"Device '{deviceName}' is currently offline." };
+
                 await _shellyCloudService.ControlSwitchDevice(new CloudDeviceSwitchRequest
                 {
                     Channel = storeDevice.ChannelId,
@@ -115,6 +121,12 @@ namespace Shelly.McpServer.Tools
                 if (storeDevice == null)
                     return null;
 
+                if (!storeDevice.IsOnline)
+                {
+                    _logger.LogWarning("GetWeatherStationStatistics: device '{DeviceName}' is currently offline.", deviceName);
+                    return null;
+                }
+
                 return await _shellyCloudService.GetWeatherStationStatisticsAsync(new WeatherStationStatisticsRequest
                 {
                     DeviceId = storeDevice.DeviceId,
@@ -143,6 +155,12 @@ namespace Shelly.McpServer.Tools
                 var storeDevice = _shellyCloudService.GetDeviceByFriendlyName(deviceName);
                 if (storeDevice == null)
                     return null;
+
+                if (!storeDevice.IsOnline)
+                {
+                    _logger.LogWarning("GetPowerConsumptionStatistics: device '{DeviceName}' is currently offline.", deviceName);
+                    return null;
+                }
 
                 return await _shellyCloudService.GetPowerConsumptionStatisticsAsync(new PowerConsumptionStatisticsRequest
                 {

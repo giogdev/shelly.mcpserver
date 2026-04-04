@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Shelly.Models.Cloud;
 using System.Text.Json;
 
@@ -42,7 +42,8 @@ namespace Shelly.Services.Services
                     if (existing != null)
                     {
                         existing.FriendlyNames = [.. (existing.FriendlyNames ?? []).Union(device.FriendlyNames ?? [])];
-                        existing.DeviceType    = device.DeviceType;
+                        existing.DeviceType = device.DeviceType;
+                        existing.IsOnline = device.IsOnline;
                     }
                     else
                     {

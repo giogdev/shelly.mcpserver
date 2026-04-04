@@ -114,7 +114,8 @@ namespace Shelly.Services.Mapper
                         DeviceId = device.Id,
                         FriendlyNames = string.IsNullOrEmpty(name) ? [] : [name],
                         ChannelId = 0,
-                        DeviceType = device.Type ?? device.Code ?? ""
+                        DeviceType = device.Type ?? device.Code ?? "",
+                        IsOnline = device.IsOnline
                     });
                 }
                 else
@@ -140,7 +141,8 @@ namespace Shelly.Services.Mapper
                                 DeviceId = device.Id,
                                 FriendlyNames = string.IsNullOrEmpty(name) ? [] : [name],
                                 ChannelId = channel,
-                                DeviceType = device.Type ?? device.Code ?? ""
+                                DeviceType = device.Type ?? device.Code ?? "",
+                                IsOnline = device.IsOnline
                             });
                         }
                     }
@@ -168,7 +170,8 @@ namespace Shelly.Services.Mapper
                                     DeviceId = device.Id,
                                     FriendlyNames = string.IsNullOrEmpty(name) ? [] : [name],
                                     ChannelId = i,
-                                    DeviceType = device.Type ?? device.Code ?? ""
+                                    DeviceType = device.Type ?? device.Code ?? "",
+                                    IsOnline = device.IsOnline
                                 });
                             }
                         }
@@ -184,7 +187,8 @@ namespace Shelly.Services.Mapper
                                 DeviceId = device.Id,
                                 FriendlyNames = string.IsNullOrEmpty(name) ? [] : [name],
                                 ChannelId = 0,
-                                DeviceType = device.Type ?? device.Code ?? ""
+                                DeviceType = device.Type ?? device.Code ?? "",
+                                IsOnline = device.IsOnline
                             });
                         }
                     }

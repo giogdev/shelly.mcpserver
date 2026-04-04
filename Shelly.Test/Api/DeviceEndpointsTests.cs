@@ -56,7 +56,7 @@ public class DeviceEndpointsTests : IClassFixture<ShellyApiFactory>
     [Fact]
     public async Task GetDeviceStatus_KnownDevice_ReturnsOk()
     {
-        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "dev-1", FriendlyNames = ["Lamp"] };
+        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "dev-1", FriendlyNames = ["Lamp"], IsOnline = true };
         _service.GetKnownDevices().Returns([storeItem]);
         _service.GetSingleDeviceStateAsync(storeItem).Returns(new GenericDeviceStatusModel
         {
@@ -82,9 +82,20 @@ public class DeviceEndpointsTests : IClassFixture<ShellyApiFactory>
     }
 
     [Fact]
+    public async Task GetDeviceStatus_OfflineDevice_Returns503()
+    {
+        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "dev-offline", FriendlyNames = ["Offline Lamp"], IsOnline = false };
+        _service.GetKnownDevices().Returns([storeItem]);
+
+        var response = await _client.GetAsync("/api/devices/dev-offline/status");
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
     public async Task GetDeviceStatus_ServiceThrowsHttpRequestException_Returns502()
     {
-        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "dev-err", FriendlyNames = ["Broken"] };
+        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "dev-err", FriendlyNames = ["Broken"], IsOnline = true };
         _service.GetKnownDevices().Returns([storeItem]);
         _service.GetSingleDeviceStateAsync(storeItem)
             .Returns(Task.FromException<GenericDeviceStatusModel?>(new HttpRequestException("upstream down")));
@@ -97,7 +108,7 @@ public class DeviceEndpointsTests : IClassFixture<ShellyApiFactory>
     [Fact]
     public async Task GetDeviceStatus_ServiceThrowsShellyApiException_DeviceNotFound_Returns404()
     {
-        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "dev-gone", FriendlyNames = ["Gone"] };
+        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "dev-gone", FriendlyNames = ["Gone"], IsOnline = true };
         _service.GetKnownDevices().Returns([storeItem]);
         _service.GetSingleDeviceStateAsync(storeItem)
             .Returns(Task.FromException<GenericDeviceStatusModel?>(
@@ -113,7 +124,7 @@ public class DeviceEndpointsTests : IClassFixture<ShellyApiFactory>
     [Fact]
     public async Task SwitchDevice_ValidRequest_ReturnsOk()
     {
-        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "sw-1", ChannelId = 0 };
+        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "sw-1", ChannelId = 0, IsOnline = true };
         _service.GetKnownDevices().Returns([storeItem]);
         _service.ControlSwitchDevice(Arg.Any<CloudDeviceSwitchRequest>()).Returns("ok");
 
@@ -145,9 +156,20 @@ public class DeviceEndpointsTests : IClassFixture<ShellyApiFactory>
     }
 
     [Fact]
+    public async Task SwitchDevice_OfflineDevice_Returns503()
+    {
+        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "sw-offline", ChannelId = 0, IsOnline = false };
+        _service.GetKnownDevices().Returns([storeItem]);
+
+        var response = await _client.PostAsJsonAsync("/api/devices/sw-offline/switch", new { on = true });
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+    }
+
+    [Fact]
     public async Task SwitchDevice_ServiceThrowsHttpRequestException_Returns502()
     {
-        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "sw-err", ChannelId = 0 };
+        var storeItem = new DeviceNameMappingStoreItem { DeviceId = "sw-err", ChannelId = 0, IsOnline = true };
         _service.GetKnownDevices().Returns([storeItem]);
         _service.ControlSwitchDevice(Arg.Any<CloudDeviceSwitchRequest>())
             .Returns(Task.FromException<string>(new HttpRequestException("upstream down")));
@@ -155,5 +177,47 @@ public class DeviceEndpointsTests : IClassFixture<ShellyApiFactory>
         var response = await _client.PostAsJsonAsync("/api/devices/sw-err/switch", new { on = true });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadGateway);
+    }
+
+    // ─── GET /api/devices/{id}/is-online ────────────────────────────────────
+
+    [Fact]
+    public async Task GetDeviceIsOnline_OnlineDevice_ReturnsTrue()
+    {
+        _service.GetKnownDevices().Returns(
+        [
+            new DeviceNameMappingStoreItem { DeviceId = "dev-on", FriendlyNames = ["Lamp"], IsOnline = true }
+        ]);
+
+        var response = await _client.GetAsync("/api/devices/dev-on/is-online");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<bool>();
+        body.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetDeviceIsOnline_OfflineDevice_ReturnsFalse()
+    {
+        _service.GetKnownDevices().Returns(
+        [
+            new DeviceNameMappingStoreItem { DeviceId = "dev-off", FriendlyNames = ["Lamp"], IsOnline = false }
+        ]);
+
+        var response = await _client.GetAsync("/api/devices/dev-off/is-online");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<bool>();
+        body.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetDeviceIsOnline_UnknownDevice_Returns404()
+    {
+        _service.GetKnownDevices().Returns([]);
+
+        var response = await _client.GetAsync("/api/devices/nonexistent/is-online");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }

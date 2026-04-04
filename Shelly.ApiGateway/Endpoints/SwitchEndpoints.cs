@@ -18,7 +18,7 @@ public static class SwitchEndpoints
 
         // Sends an ON/OFF command to the device identified by device ID.
         // Optional delaySeconds causes the device to revert after that many seconds.
-        group.MapPost("/{deviceId}/switch", async Task<Results<Ok<DefaultResponse>, NotFound<ApiErrorResponse>, BadRequest<ApiErrorResponse>>> (
+        group.MapPost("/{deviceId}/switch", async Task<Results<Ok<DefaultResponse>, NotFound<ApiErrorResponse>, BadRequest<ApiErrorResponse>, ProblemHttpResult>> (
             string deviceId,
             SwitchRequest body,
             IShellyCloudService shellyService) =>
@@ -34,6 +34,11 @@ public static class SwitchEndpoints
 
             if (device is null)
                 return TypedResults.NotFound(new ApiErrorResponse($"No device found with id '{deviceId}'."));
+
+            if (!device.IsOnline)
+                return TypedResults.Problem(
+                    detail: $"Device '{deviceId}' is currently offline.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
 
             var switchRequest = new CloudDeviceSwitchRequest
             {

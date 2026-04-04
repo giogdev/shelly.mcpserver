@@ -185,6 +185,51 @@ public class ShellyCloudServiceTests
         storeItems.Should().Contain(x => x.DeviceId == "test002" && x.ChannelId == 1 && x.FriendlyNames.Contains("Bedroom Right"));
     }
 
+    [Fact]
+    public async Task FetchAndPopulateDevicesAsync_SetsIsOnlineCorrectly()
+    {
+        var json = """
+        [
+            { "id": "online-dev",  "type": "relay", "code": "SHSW-1", "gen": "G1", "online": 1, "status": {}, "settings": { "name": "Online Device" } },
+            { "id": "offline-dev", "type": "relay", "code": "SHSW-1", "gen": "G1", "online": 0, "status": {}, "settings": { "name": "Offline Device" } }
+        ]
+        """;
+        var handler = CreateHandlerWithJsonResponse(json);
+        var service = CreateService(handler);
+
+        await service.FetchAndPopulateDevicesAsync();
+
+        var items = _deviceStore.Store.ToList();
+        items.Should().Contain(x => x.DeviceId == "online-dev" && x.IsOnline == true);
+        items.Should().Contain(x => x.DeviceId == "offline-dev" && x.IsOnline == false);
+    }
+
+    [Fact]
+    public void UpdateStore_MergePreservesFriendlyNamesAndOverwritesIsOnline()
+    {
+        var initial = new DeviceNameMappingStoreItem
+        {
+            DeviceId      = "dev-1",
+            FriendlyNames = ["Custom Name"],
+            DeviceType    = "SHSW-1",
+            IsOnline      = false
+        };
+        _deviceStore.UpdateStore([initial]);
+
+        var update = new DeviceNameMappingStoreItem
+        {
+            DeviceId      = "dev-1",
+            FriendlyNames = ["Cloud Name"],
+            DeviceType    = "SHSW-1",
+            IsOnline      = true
+        };
+        _deviceStore.UpdateStore([update]);
+
+        var stored = _deviceStore.Store.Single(x => x.DeviceId == "dev-1");
+        stored.FriendlyNames.Should().Contain("Custom Name").And.Contain("Cloud Name");
+        stored.IsOnline.Should().BeTrue();
+    }
+
     #endregion
 
     #region ControlSwitchDevice

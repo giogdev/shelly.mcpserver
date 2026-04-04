@@ -48,6 +48,7 @@ builder.Services.AddHttpClient<ShellyCloudService>(ShellyServiceConstants.HttpCl
 builder.Services.AddSingleton<ShellyCloudDeviceStore>();
 builder.Services.AddSingleton<IShellyCloudMapper, ShellyCloudMapper>();
 builder.Services.AddSingleton<IShellyCloudService, ShellyCloudService>();
+builder.Services.AddHostedService<DeviceRefreshBackgroundService>();
 
 builder.Services
     .AddMcpServer()

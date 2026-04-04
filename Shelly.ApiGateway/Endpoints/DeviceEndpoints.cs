@@ -40,6 +40,11 @@ public static class DeviceEndpoints
             if (device is null)
                 return TypedResults.NotFound(new ApiErrorResponse($"No device found with id '{deviceId}'."));
 
+            if (!device.IsOnline)
+                return TypedResults.Problem(
+                    detail: $"Device '{deviceId}' is currently offline.",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+
             GenericDeviceStatusModel? status = await shellyService.GetSingleDeviceStateAsync(device);
 
             // Service returns null only when the upstream response is empty.
@@ -52,6 +57,22 @@ public static class DeviceEndpoints
         })
         .WithName("GetDeviceStatus")
         .WithSummary("Get live status of a Shelly device by device ID");
+
+        // Returns true if the device is currently online, false if offline. Reads from the local store (no cloud call).
+        group.MapGet("/{deviceId}/is-online", Results<Ok<bool>, NotFound<ApiErrorResponse>> (
+            string deviceId,
+            IShellyCloudService shellyService) =>
+        {
+            DeviceNameMappingStoreItem? device = shellyService.GetKnownDevices()
+                .FirstOrDefault(d => d.DeviceId == deviceId);
+
+            if (device is null)
+                return TypedResults.NotFound(new ApiErrorResponse($"No device found with id '{deviceId}'."));
+
+            return TypedResults.Ok(device.IsOnline);
+        })
+        .WithName("GetDeviceIsOnline")
+        .WithSummary("Returns true if the device is currently online, false if offline");
 
         return app;
     }
