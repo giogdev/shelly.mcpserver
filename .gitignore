@@ -374,3 +374,5 @@ Shelly.ApiGateway/appsettings.Development.json
 .claude/projects/
 docs/response-examples/v2-devices-get.json
 Shelly.ApiGateway/devices.json
+
+.claude/settings.local.json
