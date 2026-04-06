@@ -1,9 +1,8 @@
-using Asg.MCP.Services;
+using Giogdev.Shelly.Integrations.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Shelly.Models;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
-using Shelly.Services.Exceptions;
 
 namespace Shelly.ApiGateway.Endpoints;
 
@@ -16,96 +15,68 @@ public static class StatisticsEndpoints
     {
         var group = app.MapGroup("/api/devices")
             .WithTags("Statistics");
-
         // Fetches temperature/humidity history for a weather station device.
         // dateFrom and dateTo are passed as UTC query parameters.
         group.MapGet("/{deviceId}/weather-statistics",
-            async Task<Results<Ok<WeatherStationStatisticsResponse>, NotFound<ApiErrorResponse>, BadRequest<ApiErrorResponse>, ProblemHttpResult>> (
+            async Task<Results<Ok<WeatherStationStatisticsResponse>, BadRequest<ApiErrorResponse>, ProblemHttpResult>> (
                 string deviceId,
                 DateTime dateFrom,
                 DateTime dateTo,
                 IShellyCloudService shellyService) =>
         {
-            try
-            {
-                var request = new WeatherStationStatisticsRequest
-                {
-                    DeviceId = deviceId,
-                    DateFrom = dateFrom,
-                    DateTo = dateTo
-                };
+            if (string.IsNullOrWhiteSpace(deviceId))
+                return TypedResults.BadRequest(new ApiErrorResponse("The 'deviceId' parameter cannot be empty."));
 
-                WeatherStationStatisticsResponse? result = await shellyService.GetWeatherStationStatisticsAsync(request);
+            if (dateFrom >= dateTo)
+                return TypedResults.BadRequest(new ApiErrorResponse("'dateFrom' must be earlier than 'dateTo'."));
 
-                // A null result means the cloud API returned nothing for this range.
-                if (result is null)
-                    return TypedResults.Problem(
-                        detail: "Shelly Cloud returned no weather statistics for the requested range.",
-                        statusCode: StatusCodes.Status502BadGateway);
+            var request = new WeatherStationStatisticsRequest
+            {
+                DeviceId = deviceId,
+                DateFrom = dateFrom,
+                DateTo   = dateTo
+            };
 
-                return TypedResults.Ok(result);
-            }
-            catch (ShellyCloudApiException ex) when (ex.ErrorKey == "device_not_found")
-            {
-                // The device ID is not recognised by the cloud as a weather station
-                // (or has never been connected). Surface as 404 with a human-readable message.
-                return TypedResults.NotFound(new ApiErrorResponse(ex.Message));
-            }
-            catch (ShellyCloudApiException ex)
-            {
-                // Other application-level rejections from Shelly (bad request semantics).
-                return TypedResults.BadRequest(new ApiErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
+            WeatherStationStatisticsResponse? result = await shellyService.GetWeatherStationStatisticsAsync(request);
+
+            if (result is null)
                 return TypedResults.Problem(
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status500InternalServerError);
-            }
+                    detail: "Shelly Cloud returned no weather statistics for the requested range.",
+                    statusCode: StatusCodes.Status502BadGateway);
+
+            return TypedResults.Ok(result);
         })
         .WithName("GetWeatherStatistics")
         .WithSummary("Get weather station historical statistics for a date range");
 
-        // Fetches energy consumption history for a power-metering device.
         group.MapGet("/{deviceId}/power-statistics",
-            async Task<Results<Ok<PowerConsumptionStatisticsResponse>, NotFound<ApiErrorResponse>, BadRequest<ApiErrorResponse>, ProblemHttpResult>> (
+            async Task<Results<Ok<PowerConsumptionStatisticsResponse>, BadRequest<ApiErrorResponse>, ProblemHttpResult>> (
                 string deviceId,
                 DateTime dateFrom,
                 DateTime dateTo,
                 IShellyCloudService shellyService) =>
         {
-            try
-            {
-                var request = new PowerConsumptionStatisticsRequest
-                {
-                    DeviceId = deviceId,
-                    DateFrom = dateFrom,
-                    DateTo = dateTo
-                };
+            if (string.IsNullOrWhiteSpace(deviceId))
+                return TypedResults.BadRequest(new ApiErrorResponse("The 'deviceId' parameter cannot be empty."));
 
-                PowerConsumptionStatisticsResponse? result = await shellyService.GetPowerConsumptionStatisticsAsync(request);
+            if (dateFrom >= dateTo)
+                return TypedResults.BadRequest(new ApiErrorResponse("'dateFrom' must be earlier than 'dateTo'."));
 
-                if (result is null)
-                    return TypedResults.Problem(
-                        detail: "Shelly Cloud returned no power statistics for the requested range.",
-                        statusCode: StatusCodes.Status502BadGateway);
+            var request = new PowerConsumptionStatisticsRequest
+            {
+                DeviceId = deviceId,
+                DateFrom = dateFrom,
+                DateTo   = dateTo
+            };
 
-                return TypedResults.Ok(result);
-            }
-            catch (ShellyCloudApiException ex) when (ex.ErrorKey == "device_not_found")
-            {
-                return TypedResults.NotFound(new ApiErrorResponse(ex.Message));
-            }
-            catch (ShellyCloudApiException ex)
-            {
-                return TypedResults.BadRequest(new ApiErrorResponse(ex.Message));
-            }
-            catch (Exception ex)
-            {
+            PowerConsumptionStatisticsResponse? result = await shellyService.GetPowerConsumptionStatisticsAsync(request);
+
+            if (result is null)
                 return TypedResults.Problem(
-                    detail: ex.Message,
-                    statusCode: StatusCodes.Status500InternalServerError);
-            }
+                    detail: "Shelly Cloud returned no power statistics for the requested range.",
+                    statusCode: StatusCodes.Status502BadGateway);
+
+            return TypedResults.Ok(result);
         })
         .WithName("GetPowerStatistics")
         .WithSummary("Get power consumption historical statistics for a date range");

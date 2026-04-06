@@ -81,7 +81,7 @@ See the [blog post](https://www.thinkasadev.com/en/home-automation-into-your-ai-
 
 > Docker and Docker Compose are required.
 
-1. Copy `devices.template.json` to a location of your choice and rename it `devices.json`. Fill in your devices.
+1. Copy `docs/resources/template/devices.template.json` to a location of your choice and rename it `devices.json`. Fill in your devices.
 2. Copy `docker/.env.template` to `docker/.env` and set `SHELLY_API_KEY` and `SHELLY_API_ENDPOINT`.
 3. In `docker/docker-compose.yml`, update the volume path for `devices.json` to match your environment.
 4. Start the MCP server:
@@ -148,5 +148,5 @@ You can add this to your project-level or user-level Claude Code settings. Once 
 
 Examples of the MCP server in action with Claude:
 
-![Claude example 1](images/claude-example-1.png)
-![Claude example 2](images/claude-example-2.png)
+![Claude example 1](resources/images/claude-example-1.png)
+![Claude example 2](resources/images/claude-example-2.png)

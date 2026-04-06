@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace Asg.MCP.Models.Shelly
+namespace Giogdev.Shelly.Integrations.Models.Shelly
 {
     public class CloudDeviceResponseModel
     {
@@ -135,6 +135,7 @@ namespace Asg.MCP.Models.Shelly
         public long Unixtime { get; set; }
 
         [JsonPropertyName("mac")]
+        [JsonConverter(typeof(FlexibleStringJsonConverter))]
         public string Mac { get; set; } = string.Empty;
 
         [JsonPropertyName("update")]
@@ -199,6 +200,29 @@ namespace Asg.MCP.Models.Shelly
 
         [JsonPropertyName("source")]
         public string Source { get; set; } = string.Empty;
+    }
+
+    public sealed class FlexibleStringJsonConverter : JsonConverter<string>
+    {
+        public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            return reader.TokenType switch
+            {
+                JsonTokenType.String => reader.GetString() ?? string.Empty,
+                JsonTokenType.Number => reader.TryGetInt64(out long longValue)
+                    ? longValue.ToString()
+                    : reader.GetDouble().ToString(System.Globalization.CultureInfo.InvariantCulture),
+                JsonTokenType.True => bool.TrueString,
+                JsonTokenType.False => bool.FalseString,
+                JsonTokenType.Null => string.Empty,
+                _ => JsonDocument.ParseValue(ref reader).RootElement.GetRawText()
+            };
+        }
+
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value);
+        }
     }
 
 

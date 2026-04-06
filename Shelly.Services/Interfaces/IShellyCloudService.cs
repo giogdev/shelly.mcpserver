@@ -1,10 +1,10 @@
-﻿using Asg.MCP.Models.Shelly;
+﻿using Giogdev.Shelly.Integrations.Models.Shelly;
 using Shelly.Models;
 using Shelly.Models.Cloud;
 using Shelly.Models.Cloud.Request;
 using Shelly.Models.Cloud.Response;
 
-namespace Asg.MCP.Services
+namespace Giogdev.Shelly.Integrations.Services
 {
     public interface IShellyCloudService
     {
@@ -31,7 +31,12 @@ namespace Asg.MCP.Services
 
         Task<string> ControlSwitchDevice(CloudDeviceSwitchRequest switchRequest);
         DeviceNameMappingStoreItem? GetDeviceByFriendlyName(string name);
-        IEnumerable<DeviceNameMappingStoreItem> GeKnownDevices();
+        IEnumerable<DeviceNameMappingStoreItem> GetKnownDevices();
+
+        /// <summary>
+        /// Fetches all devices from Shelly Cloud and populates the local device store.
+        /// </summary>
+        Task FetchAndPopulateDevicesAsync();
 
         #endregion
     }

@@ -9,9 +9,14 @@ services:
     environment:
       - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
       - SHELLY_API_KEY=${SHELLY_API_KEY}
+      # Optional: mount a custom devices.json to override auto-discovery.
       - DeviceMappingFile=/app/devices.json
+      # Optional: how often (seconds) the background service refreshes device state. Default: 30.
+      - DeviceRefreshIntervalSeconds=${DEVICE_REFRESH_INTERVAL_SECONDS:-30}
     volumes:
-      - 'C:\Container\Shelly\devices.json:/app/devices.json:ro'
+      # Set DEVICES_FILE_PATH to the local path of your devices.json (e.g. /home/user/devices.json).
+      # Defaults to /config/devices.json if not set.
+      - ${DEVICES_FILE_PATH:-/config/devices.json}:/app/devices.json:ro
     stdin_open: true
     tty: false
 
@@ -24,4 +29,11 @@ services:
     environment:
       - SHELLY_API_ENDPOINT=${SHELLY_API_ENDPOINT}
       - SHELLY_API_KEY=${SHELLY_API_KEY}
-      - DeviceMappingFileRequired=false
+      # Optional: mount a custom devices.json to override auto-discovery.
+      - DeviceMappingFile=/app/devices.json
+      # Optional: how often (seconds) the background service refreshes device state. Default: 30.
+      - DeviceRefreshIntervalSeconds=${DEVICE_REFRESH_INTERVAL_SECONDS:-30}
+    volumes:
+      # Set DEVICES_FILE_PATH to the local path of your devices.json (e.g. /home/user/devices.json).
+      # Defaults to /config/devices.json if not set.
+      - ${DEVICES_FILE_PATH:-/config/devices.json}:/app/devices.json:ro
