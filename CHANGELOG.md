@@ -3,6 +3,8 @@
 ## [2.1.0]
 ### Added
 - Devices read from cloud api and local json (with merge) at project startup
+- New job to check regularly all your devices (with status, online/offline)
+- New endpoint to check online status of device
 - Documentations updated
 - General improvments
 
