@@ -22,12 +22,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
@@ -41,13 +40,12 @@ jobs:
       contents: read
       security-events: write   # required to upload SARIF results to GitHub Security tab
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          cache: true
 
       # --- 1. NuGet dependency audit ---
       - name: Restore dependencies
@@ -81,7 +79,7 @@ jobs:
 
       # --- 3. Trivy filesystem scan (no Docker push needed) ---
       - name: Run Trivy vulnerability scanner on source
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           scan-type: fs
           scan-ref: .
@@ -101,7 +99,7 @@ jobs:
     needs: [build, security]
     if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Extract Docker metadata
         id: meta
@@ -146,7 +144,7 @@ jobs:
     needs: [build, security]
     if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Extract Docker metadata
         id: meta
